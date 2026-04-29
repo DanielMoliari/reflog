@@ -9,7 +9,7 @@ export class AppController {
 
   @Get('health')
   @ApiOperation({ summary: 'Health check' })
-  getHealth(): { status: string; timestamp: string } {
+  getHealth(): { status: string; timestamp: string; uptime: number } {
     return this.appService.getHealth()
   }
 }
