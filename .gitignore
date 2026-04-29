@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / AI tooling
+.claude/
+.cursor/
+.bolt/
+.aider/
+.continue/
+.codeium/
+.vscode/settings.json
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+.turbo/
