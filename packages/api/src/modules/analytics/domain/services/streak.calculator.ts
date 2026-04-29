@@ -5,10 +5,7 @@ export interface StreakResult {
 }
 
 export class StreakCalculator {
-  /**
-   * Recalculates streak from a list of active dates (dates with at least 1 commit).
-   * Days are counted as consecutive if they are 1 calendar day apart.
-   */
+  // streak breaks if there's even a single missed day — no partial credit
   static calculate(activeDates: Date[]): StreakResult {
     if (activeDates.length === 0) {
       return { currentStreak: 0, longestStreak: 0, lastActiveDate: null }

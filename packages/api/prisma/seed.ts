@@ -14,7 +14,6 @@ function makePrng(seed: number) {
   }
 }
 
-/** Returns a random integer in [min, max] using the supplied rng */
 function randInt(rng: () => number, min: number, max: number): number {
   return min + Math.floor(rng() * (max - min + 1))
 }

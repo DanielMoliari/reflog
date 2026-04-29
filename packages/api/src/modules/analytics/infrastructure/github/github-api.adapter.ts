@@ -132,6 +132,7 @@ export class GitHubApiAdapter implements IGitHubPort {
       })
 
       const reviews: ReviewDto[] = []
+      // cap at 20 PRs — fetching reviews is a separate request per PR, gets expensive fast
       for (const pr of prs.slice(0, 20)) {
         const prReviews = await octokit.pulls.listReviews({ owner, repo, pull_number: pr.number })
         for (const review of prReviews.data) {

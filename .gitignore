@@ -37,6 +37,7 @@ CLAUDE.md
 .aider/
 .continue/
 .codeium/
+.copilot/
 .vscode/settings.json
 
 # TypeScript
