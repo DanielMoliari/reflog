@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client/react'
-import { Search, Plus } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { RepoCard, RepoCardSkeleton } from '@/components/repo-card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'

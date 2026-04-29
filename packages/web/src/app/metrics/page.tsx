@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { METRICS_QUERY } from '@/graphql/queries'
 import type { DailyMetrics } from '@/graphql/types'
-import { getTrend, languageColor } from '@/lib/utils'
+import { getTrend } from '@/lib/utils'
 import {
   PieChart,
   Pie,
@@ -71,7 +71,6 @@ export default function MetricsPage() {
   const totalPRs = sum(metrics, 'prsMerged')
   const totalReviews = sum(metrics, 'reviewsDone')
   const totalAdditions = sum(metrics, 'additions')
-  const totalDeletions = sum(metrics, 'deletions')
 
   // Hourly distribution — deterministic mock from available data
   const hourlyData = Array.from({ length: 24 }, (_, h) => ({
