@@ -25,9 +25,10 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
 COPY --from=builder /app/packages/api/dist ./packages/api/dist
-COPY --from=builder /app/packages/api/node_modules/.prisma ./packages/api/node_modules/.prisma
+# pnpm hoists @prisma/client to the workspace root — .prisma is generated there
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY packages/api/prisma ./packages/api/prisma
 USER node
 WORKDIR /app/packages/api
-EXPOSE 3001
+EXPOSE 17642
 CMD ["node", "dist/main"]

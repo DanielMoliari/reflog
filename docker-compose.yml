@@ -33,24 +33,24 @@ services:
     networks:
       - devpulse
 
+  # Production image — only starts with: docker compose --profile production up
+  # For local dev, run the API with: pnpm dev
   api:
+    profiles: ["production"]
     build:
       context: .
       dockerfile: packages/api/Dockerfile
     ports:
       - "17642:17642"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       DATABASE_URL: postgresql://devpulse:devpulse@postgres:5432/devpulse
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-prod}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
-      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-32-char-key-change-in-prod!!}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:38929}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:17642}
     depends_on:
       postgres:
         condition: service_healthy
