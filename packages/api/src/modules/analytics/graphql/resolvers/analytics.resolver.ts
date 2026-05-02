@@ -7,6 +7,7 @@ import { StreakService } from '../../application/services/streak.service'
 import {
   DailyMetricsType,
   HeatmapDayType,
+  InsightsType,
   LanguageHistoryType,
   MetricsRangeInput,
   RepoCuriosityType,
@@ -80,6 +81,16 @@ export class AnalyticsResolver {
   @Query(() => LanguageHistoryType, { description: 'Cumulative language adoption per year (for streamgraph)' })
   async languageHistory(@CurrentUser() user: JwtPayload): Promise<LanguageHistoryType> {
     return this.analyticsService.getLanguageHistory(user.sub)
+  }
+
+  @Query(() => InsightsType, { description: 'Differentiating personal insights: hourly pattern, burnout, tech graduations' })
+  async insights(@CurrentUser() user: JwtPayload): Promise<InsightsType> {
+    const { hourlyActivity, burnout, techGraduations } = await this.analyticsService.getInsights(user.sub)
+    return {
+      ...(hourlyActivity ? { hourlyActivity } : {}),
+      ...(burnout ? { burnout } : {}),
+      techGraduations,
+    }
   }
 
   @Query(() => RepoDetailType, { description: 'Detailed insights for a single repository' })

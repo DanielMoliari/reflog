@@ -206,6 +206,68 @@ export class GitHubApiAdapter implements IGitHubPort {
     }
   }
 
+  async getCommitHours(
+    accessToken: string,
+    owner: string,
+    repo: string,
+    since: Date,
+  ): Promise<number[]> {
+    const octokit = this.buildClient(accessToken)
+    // GraphQL gives us committedDate per commit, which we bucket by UTC hour.
+    // Reusing the same paginated history pattern as getCommitActivity but only pulling timestamps.
+    const query = `query($owner:String!, $name:String!, $since:GitTimestamp!, $cursor:String) {
+      repository(owner: $owner, name: $name) {
+        defaultBranchRef {
+          target {
+            ... on Commit {
+              history(first: 100, since: $since, after: $cursor) {
+                nodes { committedDate }
+                pageInfo { hasNextPage endCursor }
+              }
+            }
+          }
+        }
+      }
+    }`
+
+    type Node = { committedDate: string }
+    type Page = {
+      repository: {
+        defaultBranchRef: {
+          target: {
+            history: { nodes: Node[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
+          } | null
+        } | null
+      } | null
+    }
+
+    const hours = new Array(24).fill(0) as number[]
+    let cursor: string | null = null
+    try {
+      // Cap at ~10 pages (1000 commits) per repo to keep cold loads bounded
+      let pages = 0
+      // eslint-disable-next-line no-constant-condition
+      while (pages < 10) {
+        const res: Page = await octokit.graphql(query, {
+          owner, name: repo, since: since.toISOString(), cursor,
+        })
+        const history = res.repository?.defaultBranchRef?.target?.history
+        if (!history) break
+        for (const c of history.nodes) {
+          const h = new Date(c.committedDate).getUTCHours()
+          if (h >= 0 && h < 24) hours[h]!++
+        }
+        if (!history.pageInfo.hasNextPage) break
+        cursor = history.pageInfo.endCursor
+        pages++
+      }
+    } catch (err) {
+      this.logger.warn(`GraphQL commit hours failed for ${owner}/${repo}: ${String(err)}`)
+      return hours
+    }
+    return hours
+  }
+
   async getRateLimitStatus(accessToken: string): Promise<{ remaining: number; resetAt: Date }> {
     const octokit = this.buildClient(accessToken)
     try {

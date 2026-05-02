@@ -154,7 +154,7 @@ export function ActivityChart({
       labelStyle={{ color: '#94a3b8', fontSize: 11, marginBottom: 4 }}
       itemStyle={{ color: '#f1f5f9', fontSize: 13, fontWeight: 600 }}
       formatter={fmtVal}
-      labelFormatter={fmtTip}
+      labelFormatter={(label) => fmtTip(String(label ?? ''))}
       cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
     />
   )

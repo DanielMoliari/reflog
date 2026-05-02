@@ -62,6 +62,13 @@ export interface IGitHubPort {
     repo: string,
     since: Date,
   ): Promise<ReviewDto[]>
+  // 24-element array (UTC hour 0-23) → commit count for the user on the default branch since `since`
+  getCommitHours(
+    accessToken: string,
+    owner: string,
+    repo: string,
+    since: Date,
+  ): Promise<number[]>
   getRateLimitStatus(accessToken: string): Promise<{ remaining: number; resetAt: Date }>
 }
 

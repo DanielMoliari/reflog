@@ -149,6 +149,37 @@ export class LanguageHistoryType {
 }
 
 @ObjectType()
+export class HourlyActivityType {
+  @Field(() => [Int]) hours: number[]      // 24-element array, commits per UTC hour summed across all-time
+  @Field(() => Int) peakHour: number        // 0-23
+  @Field(() => Float) peakRatio: number     // peak / mean
+}
+
+@ObjectType()
+export class BurnoutSignalType {
+  @Field() atRisk: boolean
+  @Field(() => Int) consecutiveDays: number
+  @Field(() => Float) netLinesTrend: number // % change last 7d vs prior 7d (negative = declining)
+  @Field() message: string
+}
+
+@ObjectType()
+export class TechGraduationType {
+  @Field() from: string                     // "JavaScript"
+  @Field() to: string                       // "TypeScript"
+  @Field(() => Int) year: number            // 2024
+  @Field(() => Float) confidence: number    // 0..1 — how clean the transition was
+  @Field() message: string
+}
+
+@ObjectType()
+export class InsightsType {
+  @Field(() => HourlyActivityType, { nullable: true }) hourlyActivity?: HourlyActivityType
+  @Field(() => BurnoutSignalType, { nullable: true }) burnout?: BurnoutSignalType
+  @Field(() => [TechGraduationType]) techGraduations: TechGraduationType[]
+}
+
+@ObjectType()
 export class RepoDetailType {
   @Field(() => RepositoryType) repository: RepositoryType
 

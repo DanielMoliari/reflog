@@ -5,6 +5,7 @@ import type { DailyMetrics, Repository } from '@prisma/client'
 import { QUEUE_SYNC_REPOSITORY } from '../../../../infrastructure/queue/queue.module'
 import { RedisService } from '../../../../infrastructure/cache/redis.service'
 import { IdentityService } from '../../../identity/application/services/identity.service'
+import { PLAN_LIMITS } from '../../../identity/domain/plan-limits'
 import { GITHUB_PORT, type IGitHubPort } from '../../ports/github.port'
 import { METRICS_REPOSITORY, type IMetricsRepository } from '../../ports/metrics.repository.port'
 
@@ -62,6 +63,12 @@ export class AnalyticsService {
   }
 
   async trackRepository(userId: string, githubRepoId: string): Promise<Repository> {
+    // Plan-gate: skip the limit check if the repo is already tracked (re-tracking shouldn't bump the count)
+    const existing = await this.metricsRepo.findRepositoryByGithubId(userId, githubRepoId)
+    if (!existing || !existing.isTracked) {
+      await this.assertCanTrackMore(userId)
+    }
+
     const accessToken = await this.identityService.getDecryptedToken(userId)
     const repos = await this.github.getUserRepositories(accessToken)
     const target = repos.find((r) => String(r.id) === githubRepoId)
@@ -76,6 +83,20 @@ export class AnalyticsService {
 
     await this.enqueueSyncJob(userId, repo.id, repo.fullName)
     return repo
+  }
+
+  // Throws ForbiddenException with a user-facing upgrade message if adding one more
+  // tracked repo would exceed the user's plan cap.
+  private async assertCanTrackMore(userId: string): Promise<void> {
+    const user = await this.identityService.findById(userId)
+    if (!user) throw new NotFoundException('User not found')
+    const limit = PLAN_LIMITS[user.plan].maxTrackedRepos
+    const tracked = (await this.metricsRepo.findRepositoriesByUser(userId, true)).length
+    if (tracked >= limit) {
+      throw new ForbiddenException(
+        `${user.plan} plan allows up to ${limit} tracked repos. Upgrade to track more.`,
+      )
+    }
   }
 
   async untrackRepository(userId: string, repoId: string): Promise<boolean> {
@@ -235,6 +256,181 @@ export class AnalyticsService {
       },
       3600,
     )
+  }
+
+  // Differentiating insights: hourly pattern, burnout flag, language graduation moments.
+  // Hourly is GitHub-bound (1h cache), burnout is pure compute over getDailyMetrics,
+  // graduations re-use languageHistory data so we don't pay for repo insights twice.
+  async getInsights(userId: string): Promise<{
+    hourlyActivity: { hours: number[]; peakHour: number; peakRatio: number } | null
+    burnout: { atRisk: boolean; consecutiveDays: number; netLinesTrend: number; message: string } | null
+    techGraduations: { from: string; to: string; year: number; confidence: number; message: string }[]
+  }> {
+    const [hourlyActivity, burnout, techGraduations] = await Promise.all([
+      this.computeHourlyActivity(userId),
+      this.computeBurnoutSignal(userId),
+      this.computeTechGraduations(userId),
+    ])
+    return { hourlyActivity, burnout, techGraduations }
+  }
+
+  // Sums commit-hour buckets across every tracked repo.
+  // Cached for 1h — the cold path is O(repos) GitHub calls and the data only shifts slowly.
+  private async computeHourlyActivity(userId: string): Promise<{ hours: number[]; peakHour: number; peakRatio: number } | null> {
+    const cacheKey = `analytics:hourly:${userId}`
+    return this.redis.getOrSet(cacheKey, async () => {
+      const repos = await this.metricsRepo.findRepositoriesByUser(userId, true)
+      if (repos.length === 0) return null
+      const accessToken = await this.identityService.getDecryptedToken(userId)
+
+      // All-time = since 2008 (GitHub's birth year); GraphQL caps at ~1k commits/repo via getCommitHours
+      const since = new Date('2008-01-01T00:00:00.000Z')
+      const totals = new Array(24).fill(0) as number[]
+
+      const CHUNK = 8
+      for (let i = 0; i < repos.length; i += CHUNK) {
+        const chunk = repos.slice(i, i + CHUNK)
+        const buckets = await Promise.all(chunk.map(async (r) => {
+          const [owner, name] = r.fullName.split('/') as [string, string]
+          try {
+            return await this.github.getCommitHours(accessToken, owner, name, since)
+          } catch (err) {
+            this.logger.warn(`getCommitHours failed for ${r.fullName}: ${String(err)}`)
+            return new Array(24).fill(0) as number[]
+          }
+        }))
+        for (const b of buckets) for (let h = 0; h < 24; h++) totals[h]! += b[h] ?? 0
+      }
+
+      const sum = totals.reduce((s, n) => s + n, 0)
+      if (sum === 0) return null
+      const peakHour = totals.indexOf(Math.max(...totals))
+      const mean = sum / 24
+      const peakRatio = mean > 0 ? totals[peakHour]! / mean : 0
+      return { hours: totals, peakHour, peakRatio }
+    }, 3600)
+  }
+
+  // Pure computation from existing daily metrics — no extra GitHub calls.
+  // Walks back from today counting consecutive active days, compares net lines window-on-window.
+  private async computeBurnoutSignal(userId: string): Promise<{
+    atRisk: boolean; consecutiveDays: number; netLinesTrend: number; message: string
+  } | null> {
+    const today = new Date()
+    today.setUTCHours(0, 0, 0, 0)
+    const from = new Date(today)
+    from.setUTCDate(from.getUTCDate() - 29)
+    const raw = await this.metricsRepo.getDailyMetrics(userId, from, today)
+    if (raw.length === 0) return null
+
+    // Roll multi-repo rows up to one daily total per date
+    const byDay = new Map<string, { commits: number; netLines: number }>()
+    for (const m of raw) {
+      const dateObj = m.date instanceof Date ? m.date : new Date(m.date as unknown as string)
+      const key = dateObj.toISOString().slice(0, 10)
+      const existing = byDay.get(key) ?? { commits: 0, netLines: 0 }
+      existing.commits += m.commits
+      existing.netLines += m.additions - m.deletions
+      byDay.set(key, existing)
+    }
+
+    // Walk back from today; the streak is broken by the first commitless day
+    let consecutiveDays = 0
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today)
+      d.setUTCDate(d.getUTCDate() - i)
+      const key = d.toISOString().slice(0, 10)
+      const day = byDay.get(key)
+      if (day && day.commits > 0) consecutiveDays++
+      else break
+    }
+
+    // Compare net lines: last 7 days vs the 7 before that
+    const netSum = (offset: number, span: number) => {
+      let total = 0
+      for (let i = offset; i < offset + span; i++) {
+        const d = new Date(today)
+        d.setUTCDate(d.getUTCDate() - i)
+        total += byDay.get(d.toISOString().slice(0, 10))?.netLines ?? 0
+      }
+      return total
+    }
+    const recent = netSum(0, 7)
+    const prior = netSum(7, 7)
+    const netLinesTrend = prior !== 0 ? Math.round(((recent - prior) / Math.abs(prior)) * 100) : 0
+
+    const atRisk = consecutiveDays >= 14 && netLinesTrend < -25
+    const message = atRisk
+      ? `You've shipped ${consecutiveDays} days straight with ${netLinesTrend}% net lines — a rest day might recharge you.`
+      : consecutiveDays >= 14
+        ? `${consecutiveDays}-day streak going strong. Output is steady — keep your rhythm.`
+        : consecutiveDays >= 7
+          ? `${consecutiveDays} days in a row. Nice cadence.`
+          : `Recent activity looks balanced.`
+
+    return { atRisk, consecutiveDays, netLinesTrend, message }
+  }
+
+  // Re-uses languageHistory's cumulative byte series. We diff each year against the previous
+  // and look for a clean swap: one language drops > 50% in share while another rises > 50%.
+  // Filter out anything < 5KB total — that's just stray config files masquerading as a "language".
+  private async computeTechGraduations(userId: string): Promise<{
+    from: string; to: string; year: number; confidence: number; message: string
+  }[]> {
+    const { years, series } = await this.getLanguageHistory(userId)
+    if (years.length < 2 || series.length === 0) return []
+
+    // Year-over-year share per language (cumulative bytes → share of that year's total)
+    const sharePerYear: Map<string, number>[] = years.map(() => new Map<string, number>())
+    for (let yi = 0; yi < years.length; yi++) {
+      const total = series.reduce((s, ser) => s + (ser.values[yi] ?? 0), 0)
+      if (total === 0) continue
+      for (const ser of series) {
+        const share = (ser.values[yi] ?? 0) / total
+        sharePerYear[yi]!.set(ser.language, share)
+      }
+    }
+
+    // Total bytes per language for the noise filter (final cumulative value)
+    const totalBytes = new Map<string, number>()
+    for (const ser of series) totalBytes.set(ser.language, ser.values[ser.values.length - 1] ?? 0)
+
+    const graduations: { from: string; to: string; year: number; confidence: number; message: string }[] = []
+
+    for (let yi = 1; yi < years.length; yi++) {
+      const prev = sharePerYear[yi - 1]!
+      const curr = sharePerYear[yi]!
+      let best: { from: string; to: string; risers: number; declined: number; combined: number } | null = null
+
+      for (const [decl, prevShare] of prev) {
+        if ((totalBytes.get(decl) ?? 0) < 5_120) continue
+        const currShareDecl = curr.get(decl) ?? 0
+        if (prevShare <= 0 || currShareDecl >= prevShare * 0.5) continue
+        const declined = (prevShare - currShareDecl) / prevShare
+        for (const [rise, currShareRise] of curr) {
+          if (rise === decl) continue
+          if ((totalBytes.get(rise) ?? 0) < 5_120) continue
+          const prevShareRise = prev.get(rise) ?? 0
+          if (currShareRise <= prevShareRise * 1.5) continue
+          const risers = prevShareRise > 0
+            ? (currShareRise - prevShareRise) / prevShareRise
+            : currShareRise // brand new language → use absolute share as the rise score
+          const combined = declined + Math.min(risers, 5)
+          if (!best || combined > best.combined) {
+            best = { from: decl, to: rise, risers, declined, combined }
+          }
+        }
+      }
+
+      if (best) {
+        const confidence = Math.min(1, (best.declined + Math.min(best.risers, 1)) / 2)
+        const finalShare = curr.get(best.to) ?? 0
+        const message = `You moved from ${best.from} to ${best.to} in ${years[yi]} — ${best.to} now dominates ${Math.round(finalShare * 100)}% of your code.`
+        graduations.push({ from: best.from, to: best.to, year: years[yi]!, confidence, message })
+      }
+    }
+
+    return graduations
   }
 
   async getDashboardMetrics(userId: string, from: Date, to: Date): Promise<DailyMetrics[]> {
