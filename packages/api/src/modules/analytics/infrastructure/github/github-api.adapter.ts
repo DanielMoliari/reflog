@@ -82,38 +82,71 @@ export class GitHubApiAdapter implements IGitHubPort {
     since: Date,
   ): Promise<CommitActivityDto[]> {
     const octokit = this.buildClient(accessToken)
-    try {
-      const commits = await octokit.paginate(octokit.repos.listCommits, {
-        owner,
-        repo,
-        since: since.toISOString(),
-        per_page: 100,
-      })
-
-      const byDay = new Map<string, CommitActivityDto>()
-      for (const commit of commits) {
-        const date = new Date(commit.commit.author?.date ?? commit.commit.committer?.date ?? new Date())
-        const key = date.toISOString().slice(0, 10)
-        const existing = byDay.get(key)
-        const stats = commit.stats
-        if (existing) {
-          existing.count++
-          existing.additions += stats?.additions ?? 0
-          existing.deletions += stats?.deletions ?? 0
-        } else {
-          byDay.set(key, {
-            date: new Date(key),
-            count: 1,
-            additions: stats?.additions ?? 0,
-            deletions: stats?.deletions ?? 0,
-          })
+    // GraphQL v4 returns 100 commits with their additions/deletions in ONE request.
+    // REST listCommits omits stats — we'd need 1 extra request per commit (massive N+1).
+    const query = `query($owner:String!, $name:String!, $since:GitTimestamp!, $cursor:String) {
+      repository(owner: $owner, name: $name) {
+        defaultBranchRef {
+          target {
+            ... on Commit {
+              history(first: 100, since: $since, after: $cursor) {
+                nodes { committedDate additions deletions }
+                pageInfo { hasNextPage endCursor }
+              }
+            }
+          }
         }
       }
-      return Array.from(byDay.values())
-    } catch (err: unknown) {
-      this.logger.warn(`Failed to get commits for ${owner}/${repo}: ${String(err)}`)
+    }`
+
+    type Node = { committedDate: string; additions: number; deletions: number }
+    type Page = {
+      repository: {
+        defaultBranchRef: {
+          target: {
+            history: { nodes: Node[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
+          } | null
+        } | null
+      } | null
+    }
+
+    const all: Node[] = []
+    let cursor: string | null = null
+    try {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const res: Page = await octokit.graphql(query, {
+          owner, name: repo, since: since.toISOString(), cursor,
+        })
+        const history = res.repository?.defaultBranchRef?.target?.history
+        if (!history) break
+        all.push(...history.nodes)
+        if (!history.pageInfo.hasNextPage) break
+        cursor = history.pageInfo.endCursor
+      }
+    } catch (err) {
+      this.logger.warn(`GraphQL commits failed for ${owner}/${repo}: ${String(err)}`)
       return []
     }
+
+    const byDay = new Map<string, CommitActivityDto>()
+    for (const c of all) {
+      const key = new Date(c.committedDate).toISOString().slice(0, 10)
+      const existing = byDay.get(key)
+      if (existing) {
+        existing.count++
+        existing.additions += c.additions
+        existing.deletions += c.deletions
+      } else {
+        byDay.set(key, {
+          date: new Date(key),
+          count: 1,
+          additions: c.additions,
+          deletions: c.deletions,
+        })
+      }
+    }
+    return Array.from(byDay.values())
   }
 
   async getPullRequests(
@@ -185,4 +218,5 @@ export class GitHubApiAdapter implements IGitHubPort {
       throw new ServiceUnavailableException('Could not reach GitHub API')
     }
   }
+
 }

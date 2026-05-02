@@ -156,7 +156,10 @@ export default function RepoDetailPage({ params }: { params: Promise<{ id: strin
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Commits — last 90 days</CardTitle>
+            <CardTitle>Commits — full history</CardTitle>
+            <p className="mt-1 text-xs text-slate-500">
+              Since {new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            </p>
           </CardHeader>
           <CardContent>
             <ActivityChart
