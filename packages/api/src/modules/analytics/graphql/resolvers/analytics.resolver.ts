@@ -8,6 +8,8 @@ import {
   DailyMetricsType,
   HeatmapDayType,
   MetricsRangeInput,
+  RepoCuriosityType,
+  RepoDetailType,
   RepositoryType,
   StreakType,
   SyncResultType,
@@ -65,6 +67,93 @@ export class AnalyticsResolver {
       currentStreak: s.currentStreak,
       longestStreak: s.longestStreak,
       ...(lastActive ? { lastActiveDate: lastActive } : {}),
+    }
+  }
+
+  @Query(() => RepoDetailType, { description: 'Detailed insights for a single repository' })
+  async repositoryDetail(
+    @CurrentUser() user: JwtPayload,
+    @Args('id', { type: () => ID }) id: string,
+  ): Promise<RepoDetailType> {
+    const { repo, insight, metrics } = await this.analyticsService.getRepositoryDetail(user.sub, id)
+
+    const totalBytes = Object.values(insight.languages).reduce((s, b) => s + b, 0)
+    const languages = Object.entries(insight.languages)
+      .map(([name, bytes]) => ({ name, bytes, percent: totalBytes > 0 ? (bytes / totalBytes) * 100 : 0 }))
+      .sort((a, b) => b.bytes - a.bytes)
+
+    const totalCommits = metrics.reduce((s, m) => s + m.commits, 0)
+    const totalAdditions = metrics.reduce((s, m) => s + m.additions, 0)
+    const totalDeletions = metrics.reduce((s, m) => s + m.deletions, 0)
+    const activeDays = new Set(
+      metrics.filter((m) => m.commits > 0).map((m) => {
+        const d = m.date instanceof Date ? m.date : new Date(m.date as unknown as string)
+        return d.toISOString().slice(0, 10)
+      }),
+    ).size
+    const ageMs = Date.now() - new Date(insight.createdAt).getTime()
+    const ageDays = Math.floor(ageMs / 86_400_000)
+    const ageYears = (ageDays / 365).toFixed(1)
+    const topLang = languages[0]
+    const fmt = (n: number) => n.toLocaleString('en-US')
+
+    // ── computed insights ────────────────────────────────────────────────────
+    // Day-of-week distribution from the 90-day window
+    const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const dowCount = new Array(7).fill(0) as number[]
+    let bestDay = { date: '', commits: 0 }
+    for (const m of metrics) {
+      const d = m.date instanceof Date ? m.date : new Date(m.date as unknown as string)
+      dowCount[d.getUTCDay()]! += m.commits
+      if (m.commits > bestDay.commits) {
+        bestDay = { date: d.toISOString().slice(0, 10), commits: m.commits }
+      }
+    }
+    const peakDow = dowCount.indexOf(Math.max(...dowCount))
+    const consistency = activeDays > 0 ? Math.round((activeDays / 90) * 100) : 0
+    const avgPerActiveDay = activeDays > 0 ? (totalCommits / activeDays).toFixed(1) : '—'
+
+    const curiosities: RepoCuriosityType[] = [
+      { label: 'Repository age', value: ageDays >= 365 ? `${ageYears} years (${fmt(ageDays)} days)` : `${fmt(ageDays)} days` },
+      { label: 'Code size', value: insight.sizeKb >= 1024 ? `${(insight.sizeKb / 1024).toFixed(1)} MB` : `${fmt(insight.sizeKb)} KB` },
+      { label: 'Languages', value: languages.length === 0 ? 'No code detected' : `${languages.length} · ${topLang!.name} dominates (${topLang!.percent.toFixed(1)}%)` },
+      { label: 'Commits in last 90d', value: fmt(totalCommits) },
+      { label: 'Most productive day', value: dowCount[peakDow]! > 0 ? `${DOW[peakDow]} (${fmt(dowCount[peakDow]!)} commits)` : '—' },
+      { label: 'Best single day', value: bestDay.commits > 0 ? `${bestDay.date} · ${fmt(bestDay.commits)} commits` : '—' },
+      { label: 'Avg commits per active day', value: String(avgPerActiveDay) },
+      { label: 'Consistency (90d)', value: `${consistency}% — ${activeDays} of 90 days active` },
+      { label: 'Lines added (90d)', value: fmt(totalAdditions) },
+      { label: 'Lines removed (90d)', value: fmt(totalDeletions) },
+      { label: 'Stars · Forks · Watchers', value: `★ ${fmt(insight.stars)}  ⑂ ${fmt(insight.forks)}  👁 ${fmt(insight.watchers)}` },
+      { label: 'Open issues', value: fmt(insight.openIssues) },
+      { label: 'Default branch', value: insight.defaultBranch },
+      ...(insight.license ? [{ label: 'License', value: insight.license }] : []),
+      ...(insight.topics.length ? [{ label: 'Topics', value: insight.topics.join(', ') }] : []),
+    ]
+
+    const recentMetrics = metrics
+      .map((m) => ({ ...m, date: m.date instanceof Date ? m.date : new Date(m.date as unknown as string) }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .map(this.mapMetrics)
+
+    return {
+      repository: repo as unknown as RepositoryType,
+      ...(insight.description ? { description: insight.description } : {}),
+      ...(insight.homepage ? { homepage: insight.homepage } : {}),
+      defaultBranch: insight.defaultBranch,
+      stars: insight.stars,
+      forks: insight.forks,
+      watchers: insight.watchers,
+      openIssues: insight.openIssues,
+      sizeKb: insight.sizeKb,
+      createdAt: new Date(insight.createdAt),
+      ...(insight.pushedAt ? { pushedAt: new Date(insight.pushedAt) } : {}),
+      topics: insight.topics,
+      ...(insight.license ? { license: insight.license } : {}),
+      totalBytes,
+      languages,
+      recentMetrics,
+      curiosities,
     }
   }
 

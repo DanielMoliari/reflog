@@ -101,3 +101,43 @@ export class MetricsRangeInput {
   @Field({ nullable: true })
   repositoryId?: string
 }
+
+@ObjectType()
+export class LanguageBreakdownType {
+  @Field() name: string
+  @Field(() => Int) bytes: number
+  @Field(() => Float) percent: number
+}
+
+@ObjectType()
+export class RepoCuriosityType {
+  @Field() label: string
+  @Field() value: string
+}
+
+@ObjectType()
+export class RepoDetailType {
+  @Field(() => RepositoryType) repository: RepositoryType
+
+  @Field({ nullable: true }) description?: string
+  @Field({ nullable: true }) homepage?: string
+  @Field() defaultBranch: string
+
+  @Field(() => Int) stars: number
+  @Field(() => Int) forks: number
+  @Field(() => Int) watchers: number
+  @Field(() => Int) openIssues: number
+  @Field(() => Int) sizeKb: number
+
+  @Field() createdAt: Date
+  @Field({ nullable: true }) pushedAt?: Date
+
+  @Field(() => [String]) topics: string[]
+  @Field({ nullable: true }) license?: string
+
+  @Field(() => Int) totalBytes: number
+  @Field(() => [LanguageBreakdownType]) languages: LanguageBreakdownType[]
+
+  @Field(() => [DailyMetricsType]) recentMetrics: DailyMetricsType[]
+  @Field(() => [RepoCuriosityType]) curiosities: RepoCuriosityType[]
+}

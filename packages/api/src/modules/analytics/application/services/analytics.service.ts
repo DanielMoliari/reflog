@@ -99,6 +99,31 @@ export class AnalyticsService {
     return { repositoryId: repo.id, queued: true }
   }
 
+  // Detail page fetches GitHub on demand and caches for 10 minutes — most metadata changes slowly
+  async getRepositoryDetail(userId: string, repoId: string) {
+    const repo = await this.metricsRepo.findRepositoryById(repoId)
+    if (!repo) throw new NotFoundException('Repository not found')
+    if (repo.userId !== userId) throw new ForbiddenException('Not your repository')
+
+    const cacheKey = `analytics:repo-insight:${repo.id}`
+    const insight = await this.redis.getOrSet(
+      cacheKey,
+      async () => {
+        const accessToken = await this.identityService.getDecryptedToken(userId)
+        const [owner, name] = repo.fullName.split('/') as [string, string]
+        return this.github.getRepositoryInsights(accessToken, owner, name)
+      },
+      600,
+    )
+
+    // 90-day metric slice for the per-repo charts
+    const since = new Date()
+    since.setUTCDate(since.getUTCDate() - 90)
+    const metrics = await this.metricsRepo.getDailyMetrics(userId, since, new Date(), repo.id)
+
+    return { repo, insight, metrics }
+  }
+
   async getDashboardMetrics(userId: string, from: Date, to: Date): Promise<DailyMetrics[]> {
     const cacheKey = `analytics:dashboard:${userId}:${from.toISOString().slice(0, 10)}:${to.toISOString().slice(0, 10)}`
     return this.redis.getOrSet(

@@ -63,3 +63,19 @@ export const HEATMAP_QUERY = gql`
     }
   }
 `
+
+export const REPOSITORY_DETAIL_QUERY = gql`
+  query RepositoryDetail($id: ID!) {
+    repositoryDetail(id: $id) {
+      repository { id fullName language isTracked syncState lastSyncedAt }
+      description homepage defaultBranch
+      stars forks watchers openIssues sizeKb
+      createdAt pushedAt
+      topics license
+      totalBytes
+      languages { name bytes percent }
+      recentMetrics { id date commits additions deletions prsMerged netLines churnRatio }
+      curiosities { label value }
+    }
+  }
+`

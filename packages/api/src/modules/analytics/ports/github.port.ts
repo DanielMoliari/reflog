@@ -24,8 +24,26 @@ export interface GitHubRepoDto {
   private: boolean
 }
 
+export interface RepoInsightDto {
+  description: string | null
+  homepage: string | null
+  defaultBranch: string
+  stars: number
+  forks: number
+  watchers: number
+  openIssues: number
+  sizeKb: number
+  createdAt: Date
+  pushedAt: Date | null
+  topics: string[]
+  license: string | null
+  // language byte counts straight from GitHub /repos/{owner}/{repo}/languages
+  languages: Record<string, number>
+}
+
 export interface IGitHubPort {
   getUserRepositories(accessToken: string): Promise<GitHubRepoDto[]>
+  getRepositoryInsights(accessToken: string, owner: string, repo: string): Promise<RepoInsightDto>
   getCommitActivity(
     accessToken: string,
     owner: string,

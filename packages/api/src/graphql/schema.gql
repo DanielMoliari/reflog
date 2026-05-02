@@ -26,6 +26,12 @@ type HeatmapDayType {
   level: Int!
 }
 
+type LanguageBreakdownType {
+  bytes: Int!
+  name: String!
+  percent: Float!
+}
+
 input MetricsRangeInput {
   from: DateTime!
   repositoryId: String
@@ -69,8 +75,36 @@ type Query {
   """List all tracked repositories"""
   repositories: [RepositoryType!]!
 
+  """Detailed insights for a single repository"""
+  repositoryDetail(id: ID!): RepoDetailType!
+
   """Get current streak stats"""
   streak: StreakType
+}
+
+type RepoCuriosityType {
+  label: String!
+  value: String!
+}
+
+type RepoDetailType {
+  createdAt: DateTime!
+  curiosities: [RepoCuriosityType!]!
+  defaultBranch: String!
+  description: String
+  forks: Int!
+  homepage: String
+  languages: [LanguageBreakdownType!]!
+  license: String
+  openIssues: Int!
+  pushedAt: DateTime
+  recentMetrics: [DailyMetricsType!]!
+  repository: RepositoryType!
+  sizeKb: Int!
+  stars: Int!
+  topics: [String!]!
+  totalBytes: Int!
+  watchers: Int!
 }
 
 type RepositoryType {

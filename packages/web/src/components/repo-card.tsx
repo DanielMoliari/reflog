@@ -1,6 +1,7 @@
 'use client'
 
-import { RefreshCw, Star } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronRight, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -19,11 +20,12 @@ export function RepoCard({ repo, onToggleTrack, onSync, syncing }: RepoCardProps
   const [owner, name] = repo.fullName.split('/')
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border-2">
-      <div className="min-w-0 flex-1">
+    <div className="group flex items-center justify-between gap-4 rounded-xl border border-border bg-surface p-4 transition-all hover:border-accent/40 hover:bg-surface-2">
+      <Link href={`/repos/${repo.id}`} className="min-w-0 flex-1 cursor-pointer">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-slate-500 text-sm">{owner}/</span>
           <span className="font-medium text-slate-100 text-sm">{name}</span>
+          <ChevronRight className="h-3 w-3 text-slate-600 opacity-0 transition-opacity group-hover:opacity-100" />
           {repo.language && (
             <Badge variant="default" className="gap-1.5">
               <span
@@ -45,7 +47,7 @@ export function RepoCard({ repo, onToggleTrack, onSync, syncing }: RepoCardProps
             Last synced {formatRelative(repo.lastSyncedAt)}
           </p>
         )}
-      </div>
+      </Link>
 
       <div className="flex items-center gap-3 shrink-0">
         <Button

@@ -7,6 +7,7 @@ import type {
   GitHubRepoDto,
   IGitHubPort,
   PullRequestDto,
+  RepoInsightDto,
   ReviewDto,
 } from '../../ports/github.port'
 
@@ -47,6 +48,31 @@ export class GitHubApiAdapter implements IGitHubPort {
       language: r.language ?? null,
       private: r.private,
     }))
+  }
+
+  async getRepositoryInsights(accessToken: string, owner: string, repo: string): Promise<RepoInsightDto> {
+    const octokit = this.buildClient(accessToken)
+    // /repos/{owner}/{repo} returns metadata, /languages returns byte counts per language
+    const [meta, langs] = await Promise.all([
+      octokit.repos.get({ owner, repo }),
+      octokit.repos.listLanguages({ owner, repo }),
+    ])
+    const r = meta.data
+    return {
+      description: r.description ?? null,
+      homepage: r.homepage ?? null,
+      defaultBranch: r.default_branch,
+      stars: r.stargazers_count,
+      forks: r.forks_count,
+      watchers: r.subscribers_count ?? r.watchers_count,
+      openIssues: r.open_issues_count,
+      sizeKb: r.size,
+      createdAt: new Date(r.created_at),
+      pushedAt: r.pushed_at ? new Date(r.pushed_at) : null,
+      topics: r.topics ?? [],
+      license: r.license?.spdx_id ?? r.license?.name ?? null,
+      languages: langs.data as Record<string, number>,
+    }
   }
 
   async getCommitActivity(
