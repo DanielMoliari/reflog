@@ -57,7 +57,7 @@ export function NavHeader() {
               {loading ? (
                 <Skeleton className="h-3 w-20" />
               ) : (
-                <span className="text-slate-300 hidden sm:block">{user?.username}</span>
+                <span className="text-slate-300 hidden sm:block">{user?.name ?? user?.username ?? 'You'}</span>
               )}
             </button>
           </DropdownMenu.Trigger>

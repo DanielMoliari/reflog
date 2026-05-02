@@ -15,8 +15,9 @@ export class UserResolver {
   async me(@CurrentUser() currentUser: JwtPayload): Promise<UserType | null> {
     const user = await this.identityService.findById(currentUser.sub)
     if (!user) return null
-    // username isn't a column on User — derive from name (or githubId as last resort) for the UI display
-    return { ...user, username: user.name ?? user.githubId } as unknown as UserType
+    // username is a real column now (set when the user enables their public profile);
+    // pass it through as-is — null means they haven't picked a public handle yet.
+    return user as unknown as UserType
   }
 
   @Mutation(() => UserType, { description: 'Update the authenticated user profile' })

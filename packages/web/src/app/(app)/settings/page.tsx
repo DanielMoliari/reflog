@@ -225,7 +225,7 @@ export default function SettingsPage() {
                 {loading ? (
                   <Skeleton className="mt-0.5 h-3 w-28" />
                 ) : (
-                  <p className="text-xs text-slate-500">@{user?.username}</p>
+                  <p className="text-xs text-slate-500">{user?.email ?? user?.name ?? `github #${user?.githubId}`}</p>
                 )}
               </div>
             </div>
