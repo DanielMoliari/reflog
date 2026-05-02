@@ -10,6 +10,29 @@ export const ME_QUERY = gql`
       email
       avatarUrl
       plan
+      notificationsEnabled
+      streakAlertsEnabled
+      publicProfile
+      publicShowRepos
+      publicShowStreak
+    }
+  }
+`
+
+export const PUBLIC_PROFILE_QUERY = gql`
+  query PublicProfile($username: String!) {
+    publicProfile(username: $username) {
+      username
+      displayName
+      avatarUrl
+      joinedAt
+      activeDays
+      totalCommits
+      currentStreak
+      longestStreak
+      topLanguages { name bytes percent }
+      recentActivity { date count level }
+      trackedRepos { fullName language }
     }
   }
 `
@@ -78,6 +101,16 @@ export const LANGUAGE_HISTORY_QUERY = gql`
     languageHistory {
       years
       series { language values }
+    }
+  }
+`
+
+export const INSIGHTS_QUERY = gql`
+  query Insights {
+    insights {
+      hourlyActivity { hours peakHour peakRatio }
+      burnout { atRisk consecutiveDays netLinesTrend message }
+      techGraduations { from to year confidence message }
     }
   }
 `

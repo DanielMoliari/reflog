@@ -2,6 +2,13 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type BurnoutSignalType {
+  atRisk: Boolean!
+  consecutiveDays: Int!
+  message: String!
+  netLinesTrend: Float!
+}
+
 type DailyMetricsType {
   additions: Int!
   churnRatio: Float
@@ -20,10 +27,27 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+input EnablePublicProfileInput {
+  """Lowercase, alphanumeric + dash, 3-30 chars"""
+  username: String!
+}
+
 type HeatmapDayType {
   count: Int!
   date: DateTime!
   level: Int!
+}
+
+type HourlyActivityType {
+  hours: [Int!]!
+  peakHour: Int!
+  peakRatio: Float!
+}
+
+type InsightsType {
+  burnout: BurnoutSignalType
+  hourlyActivity: HourlyActivityType
+  techGraduations: [TechGraduationType!]!
 }
 
 type LanguageBreakdownType {
@@ -49,8 +73,17 @@ input MetricsRangeInput {
 }
 
 type Mutation {
+  """Hide the public profile while keeping the username reserved."""
+  disablePublicProfile: UserType!
+
+  """Reserve a username and turn the public profile on."""
+  enablePublicProfile(input: EnablePublicProfileInput!): UserType!
+
   """Re-import all GitHub repositories for the current user"""
   importGitHubRepositories: Boolean!
+
+  """Send a test weekly digest email to the authenticated user"""
+  sendTestDigest: Boolean!
 
   """Trigger an on-demand repository sync"""
   syncRepository(id: ID!): SyncResultType!
@@ -61,8 +94,14 @@ type Mutation {
   """Stop tracking a repository"""
   untrackRepository(id: ID!): Boolean!
 
+  """Update notification preferences for the authenticated user"""
+  updateNotificationPrefs(input: UpdateNotificationPrefsInput!): UserType!
+
   """Update the authenticated user profile"""
   updateProfile(input: UpdateProfileInput!): UserType!
+
+  """Toggle which sections appear on the public profile."""
+  updatePublicProfilePrefs(input: UpdatePublicProfilePrefsInput!): UserType!
 }
 
 """User subscription plan"""
@@ -72,9 +111,58 @@ enum Plan {
   TEAM
 }
 
+type PublicHeatmapDayType {
+  count: Int!
+  date: DateTime!
+  level: Int!
+}
+
+type PublicLanguageType {
+  bytes: Int!
+  name: String!
+  percent: Float!
+}
+
+type PublicProfileType {
+  """Active days in the last 365 days"""
+  activeDays: Int!
+  avatarUrl: String
+
+  """Hidden when the user disables streak sharing"""
+  currentStreak: Int
+
+  """Falls back to username when name is not set"""
+  displayName: String!
+  joinedAt: DateTime!
+  longestStreak: Int
+
+  """Last 365 days of contribution activity"""
+  recentActivity: [PublicHeatmapDayType!]!
+
+  """Top 5 languages by byte count"""
+  topLanguages: [PublicLanguageType!]!
+
+  """Sum of commits across the user lifetime on tracked repos"""
+  totalCommits: Int!
+
+  """Tracked repos — null when the user disables repo sharing"""
+  trackedRepos: [PublicRepoType!]
+  username: String!
+}
+
+type PublicRepoType {
+  fullName: String!
+  language: String
+}
+
 type Query {
   """Get contribution heatmap data"""
   heatmap(year: Int): [HeatmapDayType!]!
+
+  """
+  Differentiating personal insights: hourly pattern, burnout, tech graduations
+  """
+  insights: InsightsType!
 
   """Cumulative language adoption per year (for streamgraph)"""
   languageHistory: LanguageHistoryType!
@@ -84,6 +172,11 @@ type Query {
 
   """Get daily metrics for a date range"""
   metrics(input: MetricsRangeInput!): [DailyMetricsType!]!
+
+  """
+  Anonymous-readable curated profile. Returns null when the user has not opted in.
+  """
+  publicProfile(username: String!): PublicProfileType
 
   """List all tracked repositories"""
   repositories: [RepositoryType!]!
@@ -149,6 +242,14 @@ enum SyncState {
   SYNCING
 }
 
+type TechGraduationType {
+  confidence: Float!
+  from: String!
+  message: String!
+  to: String!
+  year: Int!
+}
+
 type TechGraphLinkType {
   source: String!
   target: String!
@@ -167,9 +268,19 @@ type TechGraphType {
   nodes: [TechGraphNodeType!]!
 }
 
+input UpdateNotificationPrefsInput {
+  notificationsEnabled: Boolean
+  streakAlertsEnabled: Boolean
+}
+
 input UpdateProfileInput {
   email: String
   name: String
+}
+
+input UpdatePublicProfilePrefsInput {
+  showRepos: Boolean
+  showStreak: Boolean
 }
 
 type UserType {
@@ -179,7 +290,18 @@ type UserType {
   githubId: String!
   id: ID!
   name: String
+  notificationsEnabled: Boolean!
   plan: Plan!
+
+  """Whether the user has enabled the shareable /u/{username} page"""
+  publicProfile: Boolean!
+
+  """Include the tracked repositories list on the public profile"""
+  publicShowRepos: Boolean!
+
+  """Include current/longest streak on the public profile"""
+  publicShowStreak: Boolean!
+  streakAlertsEnabled: Boolean!
 
   """GitHub-style display handle — falls back to name or githubId"""
   username: String

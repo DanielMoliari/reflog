@@ -26,6 +26,21 @@ export class UserType {
   @Field()
   githubId: string
 
+  @Field({ defaultValue: true })
+  notificationsEnabled: boolean
+
+  @Field({ defaultValue: true })
+  streakAlertsEnabled: boolean
+
+  @Field({ defaultValue: false, description: 'Whether the user has enabled the shareable /u/{username} page' })
+  publicProfile: boolean
+
+  @Field({ defaultValue: true, description: 'Include the tracked repositories list on the public profile' })
+  publicShowRepos: boolean
+
+  @Field({ defaultValue: true, description: 'Include current/longest streak on the public profile' })
+  publicShowStreak: boolean
+
   @Field()
   createdAt: Date
 }

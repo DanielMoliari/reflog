@@ -36,3 +36,50 @@ export const UPDATE_PROFILE = gql`
     }
   }
 `
+
+export const UPDATE_NOTIFICATION_PREFS = gql`
+  mutation UpdateNotificationPrefs($input: UpdateNotificationPrefsInput!) {
+    updateNotificationPrefs(input: $input) {
+      id
+      notificationsEnabled
+      streakAlertsEnabled
+    }
+  }
+`
+
+export const SEND_TEST_DIGEST = gql`
+  mutation SendTestDigest {
+    sendTestDigest
+  }
+`
+
+export const ENABLE_PUBLIC_PROFILE = gql`
+  mutation EnablePublicProfile($input: EnablePublicProfileInput!) {
+    enablePublicProfile(input: $input) {
+      id
+      username
+      publicProfile
+      publicShowRepos
+      publicShowStreak
+    }
+  }
+`
+
+export const UPDATE_PUBLIC_PROFILE_PREFS = gql`
+  mutation UpdatePublicProfilePrefs($input: UpdatePublicProfilePrefsInput!) {
+    updatePublicProfilePrefs(input: $input) {
+      id
+      publicShowRepos
+      publicShowStreak
+    }
+  }
+`
+
+export const DISABLE_PUBLIC_PROFILE = gql`
+  mutation DisablePublicProfile {
+    disablePublicProfile {
+      id
+      publicProfile
+    }
+  }
+`

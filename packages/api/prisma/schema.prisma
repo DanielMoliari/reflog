@@ -23,15 +23,22 @@ enum SyncState {
 // ─── Identity Context ─────────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  email        String?  @unique
-  name         String?
-  githubId     String   @unique
-  githubToken  String   // AES-256-GCM encrypted
-  avatarUrl    String?
-  plan         Plan     @default(FREE)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  email                 String?  @unique
+  name                  String?
+  githubId              String   @unique
+  githubToken           String   // AES-256-GCM encrypted
+  avatarUrl             String?
+  plan                  Plan     @default(FREE)
+  notificationsEnabled  Boolean  @default(true)
+  streakAlertsEnabled   Boolean  @default(true)
+  // ── Public profile (opt-in viral surface — `/u/{username}`) ────────────────
+  username              String?  @unique // optional handle, set when user enables public profile
+  publicProfile         Boolean  @default(false)
+  publicShowRepos       Boolean  @default(true)
+  publicShowStreak      Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   repositories  Repository[]
   dailyMetrics  DailyMetrics[]

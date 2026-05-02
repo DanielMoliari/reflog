@@ -3,6 +3,7 @@ import { ApolloDriver, type ApolloDriverConfig } from '@nestjs/apollo'
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { GraphQLModule } from '@nestjs/graphql'
+import { ScheduleModule } from '@nestjs/schedule'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { PrismaModule } from './infrastructure/database/prisma.module'
 import { QueueModule } from './infrastructure/queue/queue.module'
@@ -24,6 +25,7 @@ import { AppService } from './app.service'
       { name: 'short', ttl: 1000, limit: 10 },
       { name: 'medium', ttl: 60_000, limit: 200 },
     ]),
+    ScheduleModule.forRoot(),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       path: '/api/graphql',
