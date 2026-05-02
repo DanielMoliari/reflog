@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useQuery } from '@apollo/client/react'
 import { MetricCard } from '@/components/metric-card'
 import { Heatmap } from '@/components/heatmap'
@@ -11,18 +12,15 @@ import { METRICS_QUERY, STREAK_QUERY, HEATMAP_QUERY } from '@/graphql/queries'
 import type { DailyMetrics, StreakData, HeatmapDay } from '@/graphql/types'
 import { getTrend } from '@/lib/utils'
 
-function weekRange() {
-  const to = new Date()
+function rangeFromOffset(daysBack: number, daysSpan: number) {
+  // Use day-precision keys (YYYY-MM-DD) so re-renders on the same day produce identical variables
+  // — otherwise Apollo sees different millisecond timestamps each render and refetches forever
+  const today = new Date()
+  today.setUTCHours(0, 0, 0, 0)
+  const to = new Date(today)
+  to.setUTCDate(to.getUTCDate() - daysBack)
   const from = new Date(to)
-  from.setDate(from.getDate() - 13)
-  return { from: from.toISOString(), to: to.toISOString() }
-}
-
-function prevWeekRange() {
-  const to = new Date()
-  to.setDate(to.getDate() - 7)
-  const from = new Date(to)
-  from.setDate(from.getDate() - 7)
+  from.setUTCDate(from.getUTCDate() - daysSpan)
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
@@ -31,8 +29,8 @@ function sum(rows: DailyMetrics[], key: keyof DailyMetrics): number {
 }
 
 export default function DashboardPage() {
-  const range = weekRange()
-  const prevRange = prevWeekRange()
+  const range = useMemo(() => rangeFromOffset(0, 13), [])
+  const prevRange = useMemo(() => rangeFromOffset(7, 7), [])
 
   const { data: metricsData, loading: metricsLoading } = useQuery<{ metrics: DailyMetrics[] }>(
     METRICS_QUERY,

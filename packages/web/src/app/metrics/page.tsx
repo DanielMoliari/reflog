@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@apollo/client/react'
 import { ActivityChart } from '@/components/activity-chart'
 import { MetricCard } from '@/components/metric-card'
@@ -32,9 +32,12 @@ const RANGES: { label: string; value: Range; days: number }[] = [
 ]
 
 function rangeVars(days: number) {
+  // day-precision keys keep query variables stable across re-renders within the same day
+  // (millisecond differences would cause Apollo to refetch on every render)
   const to = new Date()
-  const from = new Date()
-  from.setDate(from.getDate() - days)
+  to.setUTCHours(0, 0, 0, 0)
+  const from = new Date(to)
+  from.setUTCDate(from.getUTCDate() - days)
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
@@ -57,11 +60,14 @@ export default function MetricsPage() {
   const days = RANGES.find((r) => r.value === range)!.days
   const prevDays = days * 2
 
+  const vars = useMemo(() => rangeVars(days), [days])
+  const prevVars = useMemo(() => rangeVars(prevDays), [prevDays])
+
   const { data, loading } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
-    variables: rangeVars(days),
+    variables: vars,
   })
   const { data: prevData } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
-    variables: rangeVars(prevDays),
+    variables: prevVars,
   })
 
   const metrics = data?.metrics ?? []

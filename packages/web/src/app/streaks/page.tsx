@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useQuery } from '@apollo/client/react'
 import { Flame, Trophy, Calendar, TrendingUp } from 'lucide-react'
 import { StreakBadge } from '@/components/streak-badge'
@@ -11,17 +12,20 @@ import type { StreakData, HeatmapDay, DailyMetrics } from '@/graphql/types'
 import { formatDate, pluralize } from '@/lib/utils'
 
 function yearRange() {
+  // day-precision keys keep query variables stable across re-renders
   const to = new Date()
+  to.setUTCHours(0, 0, 0, 0)
   const from = new Date(to)
-  from.setFullYear(from.getFullYear() - 1)
+  from.setUTCFullYear(from.getUTCFullYear() - 1)
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
 export default function StreaksPage() {
+  const yearVars = useMemo(() => yearRange(), [])
   const { data: streakData, loading: streakLoading } = useQuery<{ streak: StreakData }>(STREAK_QUERY)
   const { data: heatmapData, loading: heatmapLoading } = useQuery<{ heatmap: HeatmapDay[] }>(HEATMAP_QUERY)
   const { data: metricsData } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
-    variables: yearRange(),
+    variables: yearVars,
   })
 
   const streak = streakData?.streak
