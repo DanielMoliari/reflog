@@ -110,20 +110,22 @@ export class AnalyticsResolver {
       }
     }
     const peakDow = dowCount.indexOf(Math.max(...dowCount))
-    const consistency = activeDays > 0 ? Math.round((activeDays / 90) * 100) : 0
+    // Consistency over the repo's whole lifetime (capped at the actual age in days, min 1 to avoid div-by-zero)
+    const lifetimeDays = Math.max(ageDays, 1)
+    const consistency = activeDays > 0 ? Math.round((activeDays / lifetimeDays) * 100) : 0
     const avgPerActiveDay = activeDays > 0 ? (totalCommits / activeDays).toFixed(1) : '—'
 
     const curiosities: RepoCuriosityType[] = [
       { label: 'Repository age', value: ageDays >= 365 ? `${ageYears} years (${fmt(ageDays)} days)` : `${fmt(ageDays)} days` },
       { label: 'Code size', value: insight.sizeKb >= 1024 ? `${(insight.sizeKb / 1024).toFixed(1)} MB` : `${fmt(insight.sizeKb)} KB` },
       { label: 'Languages', value: languages.length === 0 ? 'No code detected' : `${languages.length} · ${topLang!.name} dominates (${topLang!.percent.toFixed(1)}%)` },
-      { label: 'Commits in last 90d', value: fmt(totalCommits) },
+      { label: 'Commits all-time', value: fmt(totalCommits) },
       { label: 'Most productive day', value: dowCount[peakDow]! > 0 ? `${DOW[peakDow]} (${fmt(dowCount[peakDow]!)} commits)` : '—' },
       { label: 'Best single day', value: bestDay.commits > 0 ? `${bestDay.date} · ${fmt(bestDay.commits)} commits` : '—' },
       { label: 'Avg commits per active day', value: String(avgPerActiveDay) },
-      { label: 'Consistency (90d)', value: `${consistency}% — ${activeDays} of 90 days active` },
-      { label: 'Lines added (90d)', value: fmt(totalAdditions) },
-      { label: 'Lines removed (90d)', value: fmt(totalDeletions) },
+      { label: 'Consistency', value: `${consistency}% — ${fmt(activeDays)} of ${fmt(lifetimeDays)} days active` },
+      { label: 'Lines added all-time', value: fmt(totalAdditions) },
+      { label: 'Lines removed all-time', value: fmt(totalDeletions) },
       { label: 'Stars · Forks · Watchers', value: `★ ${fmt(insight.stars)}  ⑂ ${fmt(insight.forks)}  👁 ${fmt(insight.watchers)}` },
       { label: 'Open issues', value: fmt(insight.openIssues) },
       { label: 'Default branch', value: insight.defaultBranch },

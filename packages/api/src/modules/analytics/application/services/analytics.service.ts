@@ -36,34 +36,29 @@ export class AnalyticsService {
     return this.metricsRepo.findRepositoriesByUser(userId)
   }
 
-  // Pull every repo the user owns, track the 10 most recently pushed, and kick off sync jobs
-  // so the dashboard fills with data without a manual "track" step.
+  // Pull every repo the user owns, track them all, and queue sync jobs.
+  // GitHub is a record of years of work — language stats and "all-time" metrics
+  // are only meaningful when every repo contributes. BullMQ runs jobs in parallel
+  // and the user just sees a "syncing" indicator while it backfills.
   async importFromGitHub(userId: string): Promise<{ imported: number; tracked: number }> {
     const accessToken = await this.identityService.getDecryptedToken(userId)
     const ghRepos = await this.github.getUserRepositories(accessToken)
-    const trackedTop = new Set(ghRepos.slice(0, 10).map((r) => String(r.id)))
 
     let imported = 0
-    let tracked = 0
     for (const ghRepo of ghRepos) {
-      const id = String(ghRepo.id)
-      const isTracked = trackedTop.has(id)
       const repo = await this.metricsRepo.upsertRepository({
         userId,
-        githubRepoId: id,
+        githubRepoId: String(ghRepo.id),
         fullName: ghRepo.fullName,
         language: ghRepo.language,
-        isTracked,
+        isTracked: true,
       })
+      await this.enqueueSyncJob(userId, repo.id, repo.fullName)
       imported++
-      if (isTracked) {
-        await this.enqueueSyncJob(userId, repo.id, repo.fullName)
-        tracked++
-      }
     }
 
-    this.logger.log(`Initial import for ${userId}: ${imported} repos, ${tracked} sync jobs queued`)
-    return { imported, tracked }
+    this.logger.log(`Initial import for ${userId}: ${imported} repos imported and queued for sync`)
+    return { imported, tracked: imported }
   }
 
   async trackRepository(userId: string, githubRepoId: string): Promise<Repository> {
@@ -116,10 +111,14 @@ export class AnalyticsService {
       600,
     )
 
-    // 90-day metric slice for the per-repo charts
-    const since = new Date()
-    since.setUTCDate(since.getUTCDate() - 90)
-    const metrics = await this.metricsRepo.getDailyMetrics(userId, since, new Date(), repo.id)
+    // All-time slice — backfill window is bounded by the repo's createdAt on GitHub anyway,
+    // so "since createdAt" gives us every metric we ever stored for this repo.
+    const metrics = await this.metricsRepo.getDailyMetrics(
+      userId,
+      new Date(insight.createdAt),
+      new Date(),
+      repo.id,
+    )
 
     return { repo, insight, metrics }
   }

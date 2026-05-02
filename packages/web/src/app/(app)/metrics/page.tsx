@@ -23,19 +23,24 @@ import {
   CartesianGrid,
 } from 'recharts'
 
-type Range = '7d' | '30d' | '90d'
+type Range = '7d' | '30d' | '90d' | 'all'
 
-const RANGES: { label: string; value: Range; days: number }[] = [
+// `days: null` means "all time" — use a far-past anchor that predates GitHub itself
+const RANGES: { label: string; value: Range; days: number | null }[] = [
   { label: '7 days', value: '7d', days: 7 },
   { label: '30 days', value: '30d', days: 30 },
   { label: '90 days', value: '90d', days: 90 },
+  { label: 'All time', value: 'all', days: null },
 ]
 
-function rangeVars(days: number) {
+function rangeVars(days: number | null) {
   // day-precision keys keep query variables stable across re-renders within the same day
   // (millisecond differences would cause Apollo to refetch on every render)
   const to = new Date()
   to.setUTCHours(0, 0, 0, 0)
+  if (days === null) {
+    return { from: '2008-01-01T00:00:00.000Z', to: to.toISOString() }
+  }
   const from = new Date(to)
   from.setUTCDate(from.getUTCDate() - days)
   return { from: from.toISOString(), to: to.toISOString() }
@@ -58,20 +63,24 @@ const LANG_COLORS = ['#06b6d4', '#0891b2', '#0e7490', '#155e75', '#164e63']
 export default function MetricsPage() {
   const [range, setRange] = useState<Range>('30d')
   const days = RANGES.find((r) => r.value === range)!.days
-  const prevDays = days * 2
+  // For all-time there's no comparable previous period, so we skip the trend query
+  const prevDays = days === null ? null : days * 2
 
   const vars = useMemo(() => rangeVars(days), [days])
-  const prevVars = useMemo(() => rangeVars(prevDays), [prevDays])
+  const prevVars = useMemo(() => (prevDays === null ? null : rangeVars(prevDays)), [prevDays])
 
   const { data, loading } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
     variables: vars,
   })
   const { data: prevData } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
-    variables: prevVars,
+    variables: prevVars ?? vars,
+    skip: prevVars === null,
   })
 
   const metrics = data?.metrics ?? []
-  const prev = prevData?.metrics.slice(0, prevDays - days) ?? []
+  const prev = prevDays === null || days === null
+    ? []
+    : (prevData?.metrics.slice(0, prevDays - days) ?? [])
 
   const totalCommits = sum(metrics, 'commits')
   const totalPRs = sum(metrics, 'prsMerged')

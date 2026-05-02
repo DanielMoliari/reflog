@@ -9,7 +9,9 @@ import { METRICS_REPOSITORY, type IMetricsRepository } from '../../ports/metrics
 import { StreakService } from '../services/streak.service'
 import { AnalyticsService, type SyncJobData } from '../services/analytics.service'
 
-@Processor(QUEUE_SYNC_REPOSITORY)
+// concurrency=5: GitHub allows 5000 req/hour per user — 5 parallel syncs keeps us well under the cap
+// while making a 66-repo backfill finish in ~2 minutes instead of 15.
+@Processor(QUEUE_SYNC_REPOSITORY, { concurrency: 5 })
 export class SyncRepositoryProcessor extends WorkerHost {
   private readonly logger = new Logger(SyncRepositoryProcessor.name)
 
@@ -32,9 +34,9 @@ export class SyncRepositoryProcessor extends WorkerHost {
     try {
       const accessToken = await this.identityService.getDecryptedToken(userId)
       const [owner, repo] = fullName.split('/') as [string, string]
-      // 1-year window — covers the contribution heatmap and the 90-day filter on the metrics page
-      const since = new Date()
-      since.setUTCFullYear(since.getUTCFullYear() - 1)
+      // Full history — GitHub is a record of years of work, not just the last quarter.
+      // 2008 covers the entire platform lifetime; pagination caps the actual cost.
+      const since = new Date('2008-01-01T00:00:00Z')
 
       const [commits, pullRequests, reviews] = await Promise.all([
         this.github.getCommitActivity(accessToken, owner, repo, since),

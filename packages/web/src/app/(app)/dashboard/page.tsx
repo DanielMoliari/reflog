@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@apollo/client/react'
 import { MetricCard } from '@/components/metric-card'
 import { Heatmap } from '@/components/heatmap'
@@ -12,16 +12,31 @@ import { METRICS_QUERY, STREAK_QUERY, HEATMAP_QUERY } from '@/graphql/queries'
 import type { DailyMetrics, StreakData, HeatmapDay } from '@/graphql/types'
 import { getTrend } from '@/lib/utils'
 
-function rangeFromOffset(daysBack: number, daysSpan: number) {
-  // Use day-precision keys (YYYY-MM-DD) so re-renders on the same day produce identical variables
-  // — otherwise Apollo sees different millisecond timestamps each render and refetches forever
-  const today = new Date()
-  today.setUTCHours(0, 0, 0, 0)
-  const to = new Date(today)
-  to.setUTCDate(to.getUTCDate() - daysBack)
-  const from = new Date(to)
-  from.setUTCDate(from.getUTCDate() - daysSpan)
-  return { from: from.toISOString(), to: to.toISOString() }
+type Range = 'week' | 'month' | 'all'
+const RANGES: { label: string; value: Range; kpiLabel: string; chartLabel: string }[] = [
+  { label: 'This week',  value: 'week',  kpiLabel: 'this week',  chartLabel: 'last 14 days' },
+  { label: 'This month', value: 'month', kpiLabel: 'this month', chartLabel: 'last 30 days' },
+  { label: 'All time',   value: 'all',   kpiLabel: 'all-time',   chartLabel: 'full history' },
+]
+
+function dayBoundary(daysAgo = 0): Date {
+  const d = new Date()
+  d.setUTCHours(0, 0, 0, 0)
+  d.setUTCDate(d.getUTCDate() - daysAgo)
+  return d
+}
+
+function rangeFor(r: Range) {
+  const to = dayBoundary(0).toISOString()
+  if (r === 'all')   return { from: '2008-01-01T00:00:00.000Z', to }
+  if (r === 'month') return { from: dayBoundary(29).toISOString(), to }
+  return { from: dayBoundary(13).toISOString(), to } // week-on-week needs 14d for trend
+}
+
+function prevRangeFor(r: Range) {
+  if (r === 'all') return null
+  if (r === 'month') return { from: dayBoundary(59).toISOString(), to: dayBoundary(30).toISOString() }
+  return { from: dayBoundary(13).toISOString(), to: dayBoundary(7).toISOString() }
 }
 
 function sum(rows: DailyMetrics[], key: keyof DailyMetrics): number {
@@ -29,15 +44,18 @@ function sum(rows: DailyMetrics[], key: keyof DailyMetrics): number {
 }
 
 export default function DashboardPage() {
-  const range = useMemo(() => rangeFromOffset(0, 13), [])
-  const prevRange = useMemo(() => rangeFromOffset(7, 7), [])
+  const [range, setRange] = useState<Range>('week')
+  const meta = RANGES.find((r) => r.value === range)!
+
+  const vars = useMemo(() => rangeFor(range), [range])
+  const prevVars = useMemo(() => prevRangeFor(range), [range])
 
   const { data: metricsData, loading: metricsLoading } = useQuery<{ metrics: DailyMetrics[] }>(
-    METRICS_QUERY,
-    { variables: { from: range.from, to: range.to } },
+    METRICS_QUERY, { variables: vars },
   )
   const { data: prevData } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
-    variables: { from: prevRange.from, to: prevRange.to },
+    variables: prevVars ?? vars,
+    skip: prevVars === null,
   })
   const { data: streakData, loading: streakLoading } = useQuery<{ streak: StreakData }>(STREAK_QUERY)
   const { data: heatmapData, loading: heatmapLoading } = useQuery<{ heatmap: HeatmapDay[] }>(HEATMAP_QUERY)
@@ -46,37 +64,60 @@ export default function DashboardPage() {
   const prev = prevData?.metrics ?? []
   const streak = streakData?.streak
 
-  const currentWeek = metrics.slice(7)
-  const prevWeek = prev.slice(0, 7)
+  // For week view we want the latest 7 days only as the KPI window
+  const kpiSlice = range === 'week' ? metrics.slice(-7) : metrics
+  const prevSlice = range === 'week' ? prev.slice(0, 7) : prev
 
-  const commits = sum(currentWeek, 'commits')
-  const prs = sum(currentWeek, 'prsMerged')
-  const reviews = sum(currentWeek, 'reviewsDone')
+  const commits = sum(kpiSlice, 'commits')
+  const prs = sum(kpiSlice, 'prsMerged')
+  const reviews = sum(kpiSlice, 'reviewsDone')
 
-  const sparkline = metrics.map((m) => ({ value: m.commits }))
+  const sparkline = metrics.slice(-30).map((m) => ({ value: m.commits }))
+
+  const showTrends = prevVars !== null
+  const trend = (current: number, key: keyof DailyMetrics) =>
+    showTrends ? getTrend(current, sum(prevSlice, key)) : undefined
 
   return (
     <div className="space-y-6">
+      {/* Range selector */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h2 className="text-base font-semibold text-slate-100">Overview</h2>
+        <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+          {RANGES.map(({ label, value }) => (
+            <button
+              key={value}
+              onClick={() => setRange(value)}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                range === value ? 'bg-surface-2 text-slate-100' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
-          title="Commits this week"
+          title={`Commits ${meta.kpiLabel}`}
           value={commits}
-          trend={getTrend(commits, sum(prevWeek, 'commits'))}
+          {...(trend(commits, 'commits') ? { trend: trend(commits, 'commits')! } : {})}
           sparkline={sparkline}
           loading={metricsLoading}
           accent
         />
         <MetricCard
-          title="PRs merged"
+          title={`PRs merged ${meta.kpiLabel}`}
           value={prs}
-          trend={getTrend(prs, sum(prevWeek, 'prsMerged'))}
+          {...(trend(prs, 'prsMerged') ? { trend: trend(prs, 'prsMerged')! } : {})}
           loading={metricsLoading}
         />
         <MetricCard
-          title="Reviews done"
+          title={`Reviews done ${meta.kpiLabel}`}
           value={reviews}
-          trend={getTrend(reviews, sum(prevWeek, 'reviewsDone'))}
+          {...(trend(reviews, 'reviewsDone') ? { trend: trend(reviews, 'reviewsDone')! } : {})}
           loading={metricsLoading}
         />
         <Card className="relative overflow-hidden">
@@ -106,7 +147,7 @@ export default function DashboardPage() {
       {/* Recent activity chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Commits — last 14 days</CardTitle>
+          <CardTitle>Commits — {meta.chartLabel}</CardTitle>
         </CardHeader>
         <CardContent>
           {metricsLoading ? (
