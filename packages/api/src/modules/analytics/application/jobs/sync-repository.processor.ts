@@ -32,9 +32,9 @@ export class SyncRepositoryProcessor extends WorkerHost {
     try {
       const accessToken = await this.identityService.getDecryptedToken(userId)
       const [owner, repo] = fullName.split('/') as [string, string]
-      // 30-day window keeps API calls cheap; full backfill only happens on first track
+      // 1-year window — covers the contribution heatmap and the 90-day filter on the metrics page
       const since = new Date()
-      since.setDate(since.getDate() - 30)
+      since.setUTCFullYear(since.getUTCFullYear() - 1)
 
       const [commits, pullRequests, reviews] = await Promise.all([
         this.github.getCommitActivity(accessToken, owner, repo, since),

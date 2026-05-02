@@ -34,16 +34,37 @@ export class AnalyticsResolver {
     @Args('input') input: MetricsRangeInput,
   ): Promise<DailyMetricsType[]> {
     const raw = await this.analyticsService.getDashboardMetrics(user.sub, input.from, input.to)
-    return raw.map(this.mapMetrics)
+    // Each tracked repo stores its own row per day — collapse to one row per date so the dashboard
+    // sees user-wide totals instead of duplicate points per repo.
+    const byDate = new Map<string, DailyMetrics>()
+    for (const m of raw) {
+      const dateObj = m.date instanceof Date ? m.date : new Date(m.date as unknown as string)
+      const key = dateObj.toISOString().slice(0, 10)
+      const existing = byDate.get(key)
+      if (existing) {
+        existing.commits += m.commits
+        existing.additions += m.additions
+        existing.deletions += m.deletions
+        existing.prsOpened += m.prsOpened
+        existing.prsMerged += m.prsMerged
+        existing.reviewsDone += m.reviewsDone
+      } else {
+        byDate.set(key, { ...m, date: dateObj })
+      }
+    }
+    return [...byDate.values()].sort((a, b) => a.date.getTime() - b.date.getTime()).map(this.mapMetrics)
   }
 
   @Query(() => StreakType, { nullable: true, description: 'Get current streak stats' })
   async streak(@CurrentUser() user: JwtPayload): Promise<StreakType | null> {
     const s = await this.streakService.getStreak(user.sub)
+    const lastActive = s.lastActiveDate
+      ? (s.lastActiveDate instanceof Date ? s.lastActiveDate : new Date(s.lastActiveDate as unknown as string))
+      : null
     return {
       currentStreak: s.currentStreak,
       longestStreak: s.longestStreak,
-      ...(s.lastActiveDate ? { lastActiveDate: s.lastActiveDate } : {}),
+      ...(lastActive ? { lastActiveDate: lastActive } : {}),
     }
   }
 
@@ -57,10 +78,16 @@ export class AnalyticsResolver {
     const to = new Date(`${targetYear}-12-31`)
     const metrics = await this.analyticsService.getDashboardMetrics(user.sub, from, to)
 
-    return metrics.map((m) => {
-      const count = m.commits
+    // Aggregate commits across repos per day so the heatmap shows user-wide activity
+    const byDay = new Map<string, number>()
+    for (const m of metrics) {
+      const dateObj = m.date instanceof Date ? m.date : new Date(m.date as unknown as string)
+      const key = dateObj.toISOString().slice(0, 10)
+      byDay.set(key, (byDay.get(key) ?? 0) + m.commits)
+    }
+    return [...byDay.entries()].map(([key, count]) => {
       const level = count === 0 ? 0 : count <= 2 ? 1 : count <= 5 ? 2 : count <= 10 ? 3 : 4
-      return { date: m.date, count, level }
+      return { date: new Date(key), count, level }
     })
   }
 
@@ -99,7 +126,8 @@ export class AnalyticsResolver {
     const total = m.additions + m.deletions
     const base = {
       id: m.id,
-      date: m.date,
+      // Prisma 7 + pg driver returns @db.Date columns as ISO strings — coerce to Date so the GraphQL DateTime scalar can serialize
+      date: m.date instanceof Date ? m.date : new Date(m.date as unknown as string),
       commits: m.commits,
       additions: m.additions,
       deletions: m.deletions,
