@@ -22,6 +22,7 @@ export interface IMetricsRepository {
     fullName: string
     language: string | null
     isTracked?: boolean
+    isPrivate?: boolean
   }): Promise<Repository>
   updateRepositorySyncState(
     id: string,

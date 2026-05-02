@@ -28,12 +28,14 @@ export class PrismaMetricsRepository implements IMetricsRepository {
     fullName: string
     language: string | null
     isTracked?: boolean
+    isPrivate?: boolean
   }): Promise<Repository> {
-    const { isTracked = true, ...rest } = data
+    const { isTracked = true, isPrivate = false, ...rest } = data
     return this.prisma.repository.upsert({
       where: { userId_githubRepoId: { userId: data.userId, githubRepoId: data.githubRepoId } },
-      create: { ...rest, isTracked },
-      update: { fullName: data.fullName, language: data.language },
+      create: { ...rest, isTracked, isPrivate },
+      // Update visibility on every sync — repos can flip from private to public on GitHub
+      update: { fullName: data.fullName, language: data.language, isPrivate },
     })
   }
 

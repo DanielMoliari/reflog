@@ -53,6 +53,7 @@ export class AnalyticsService {
         fullName: ghRepo.fullName,
         language: ghRepo.language,
         isTracked: true,
+        isPrivate: ghRepo.private,
       })
       await this.enqueueSyncJob(userId, repo.id, repo.fullName)
       imported++
@@ -79,6 +80,7 @@ export class AnalyticsService {
       githubRepoId,
       fullName: target.fullName,
       language: target.language,
+      isPrivate: target.private,
     })
 
     await this.enqueueSyncJob(userId, repo.id, repo.fullName)

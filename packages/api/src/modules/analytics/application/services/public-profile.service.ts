@@ -114,8 +114,10 @@ export class PublicProfileService {
       longestStreak: streak ? streak.longestStreak : null,
       topLanguages,
       recentActivity,
+      // Public profile must NEVER expose private repos by name — even if the user
+      // opted into "show tracked repos", filter to only the public ones.
       trackedRepos: user.publicShowRepos
-        ? repos.map((r) => ({ fullName: r.fullName, language: r.language }))
+        ? repos.filter((r) => !r.isPrivate).map((r) => ({ fullName: r.fullName, language: r.language }))
         : null,
     }
   }

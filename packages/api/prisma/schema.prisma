@@ -57,6 +57,7 @@ model Repository {
   fullName     String     // "owner/repo"
   language     String?
   isTracked    Boolean    @default(true)
+  isPrivate    Boolean    @default(false)
   syncState    SyncState  @default(IDLE)
   lastSyncedAt DateTime?
   createdAt    DateTime   @default(now())
