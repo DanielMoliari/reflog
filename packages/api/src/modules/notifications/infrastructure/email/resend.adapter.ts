@@ -6,12 +6,20 @@ import type { DigestSummaryData, INotificationService } from '../../ports/notifi
 @Injectable()
 export class ResendAdapter implements INotificationService {
   private readonly logger = new Logger(ResendAdapter.name)
-  private readonly resend: Resend
   private readonly fromAddress: string
+  private _resend: Resend | null = null
 
   constructor(private readonly configService: ConfigService) {
-    this.resend = new Resend(configService.get<string>('RESEND_API_KEY'))
     this.fromAddress = configService.get<string>('EMAIL_FROM', 'digest@devpulse.app')
+  }
+
+  // Lazy init — Resend only matters when we actually try to send. Lets the API boot without RESEND_API_KEY in dev.
+  private get resend(): Resend | null {
+    if (this._resend) return this._resend
+    const apiKey = this.configService.get<string>('RESEND_API_KEY')
+    if (!apiKey) return null
+    this._resend = new Resend(apiKey)
+    return this._resend
   }
 
   async sendWeeklyDigest(
@@ -21,6 +29,11 @@ export class ResendAdapter implements INotificationService {
     summary: DigestSummaryData,
   ): Promise<void> {
     const weekLabel = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+    if (!this.resend) {
+      this.logger.warn(`RESEND_API_KEY not set — skipping digest email to ${email}`)
+      return
+    }
 
     try {
       await this.resend.emails.send({
@@ -36,6 +49,11 @@ export class ResendAdapter implements INotificationService {
   }
 
   async sendStreakAlert(_userId: string, email: string, streakLength: number): Promise<void> {
+    if (!this.resend) {
+      this.logger.warn(`RESEND_API_KEY not set — skipping streak alert to ${email}`)
+      return
+    }
+
     try {
       await this.resend.emails.send({
         from: this.fromAddress,
