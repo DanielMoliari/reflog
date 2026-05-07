@@ -45,11 +45,16 @@ const TOOLTIP_STYLE = {
 function buildAxisFormatter(data: ChartDataPoint[]) {
   if (data.length === 0) return { fmt: () => '', fmtTip: () => '', interval: 0 as const }
 
+  // Parse as UTC — dates from DB are "2026-05-07T00:00:00.000Z". Without timeZone:UTC
+  // toLocaleDateString would shift the date back one day for users in UTC- timezones.
   const dates = data.map((d) => new Date(d.date))
   const first = dates[0]!
   const last = dates[dates.length - 1]!
-  const spanDays = (last.getTime() - first.getTime()) / 86_400_000
-  const crossesYear = first.getUTCFullYear() !== last.getUTCFullYear()
+  // Guard: if data isn't sorted, find true min/max
+  const minTime = Math.min(...dates.map((d) => d.getTime()))
+  const maxTime = Math.max(...dates.map((d) => d.getTime()))
+  const spanDays = (maxTime - minTime) / 86_400_000
+  const crossesYear = new Date(minTime).getUTCFullYear() !== new Date(maxTime).getUTCFullYear()
 
   let mode: 'day' | 'month' | 'year'
   if (spanDays <= 45) mode = 'day'
@@ -58,9 +63,9 @@ function buildAxisFormatter(data: ChartDataPoint[]) {
 
   const fmt = (raw: string) => {
     const d = new Date(raw)
-    if (mode === 'day') return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    if (mode === 'day') return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
     if (mode === 'month') {
-      const month = d.toLocaleDateString('en-US', { month: 'short' })
+      const month = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
       return crossesYear ? `${month} '${String(d.getUTCFullYear()).slice(2)}` : month
     }
     return String(d.getUTCFullYear())
@@ -69,7 +74,7 @@ function buildAxisFormatter(data: ChartDataPoint[]) {
   const fmtTip = (raw: string) => {
     const d = new Date(raw)
     return d.toLocaleDateString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
     })
   }
 
