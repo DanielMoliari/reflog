@@ -34,7 +34,8 @@ function buildClient() {
     link: from([errorLink, authLink, httpLink]),
     cache: new InMemoryCache(),
     defaultOptions: {
-      watchQuery: { fetchPolicy: 'cache-and-network' },
+      watchQuery: { fetchPolicy: 'network-only' },
+      query: { fetchPolicy: 'network-only' },
     },
   })
 }

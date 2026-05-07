@@ -137,9 +137,10 @@ export function SyncPanel({ open, onClose }: SyncPanelProps) {
           [...prev.map((r) => r.status === 'queued' ? { ...r, status: 'done' as const } : r)]
             .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status])
         )
-        // Evict all metric/heatmap/streak data from Apollo cache so the next
-        // render fetches fresh data from the server — not stale pre-sync values.
-        await apollo.refetchQueries({ include: ['Metrics', 'Heatmap', 'Streak', 'Dashboard', 'Repositories'] })
+        // Wipe the entire Apollo cache and re-fetch active queries from the network.
+        // refetchQueries only re-runs known active queries; resetStore also clears
+        // any stale cache entries that may have built up with old date variables.
+        await apollo.resetStore()
       }
     }, 1500)
   }
