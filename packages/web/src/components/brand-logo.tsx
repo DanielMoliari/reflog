@@ -13,7 +13,7 @@ const LOGO_SVG = (
 )
 
 interface BrandLogoProps {
-  href?: string
+  href?: string | null
   size?: 'sm' | 'md'
 }
 

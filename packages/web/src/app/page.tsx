@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AuthRedirect } from '@/components/auth-redirect'
 import {
   GitCommit,
   Flame,
@@ -145,6 +146,7 @@ function HeroPreview() {
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-bg text-slate-100">
+      <AuthRedirect />
       {/* Nav */}
       <nav className="fixed inset-x-0 top-0 z-50 border-b border-border bg-bg/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
