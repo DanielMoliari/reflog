@@ -54,10 +54,16 @@ const PRICING = [
     price: '$0',
     sub: 'No credit card required',
     features: [
-      '5 tracked repositories',
-      '30-day history',
-      'Weekly digest email',
-      'Public profile & card',
+      { label: '5 tracked repositories', pro: false },
+      { label: '30-day history', pro: false },
+      { label: 'Weekly digest email', pro: false },
+      { label: 'Public profile & card', pro: false },
+      { label: 'Unlimited repositories', pro: true },
+      { label: 'Full commit history', pro: true },
+      { label: 'Real-time sync', pro: true },
+      { label: 'Advanced analytics', pro: true },
+      { label: 'API access', pro: true },
+      { label: 'Priority support', pro: true },
     ],
     highlight: false,
   },
@@ -65,17 +71,30 @@ const PRICING = [
     plan: 'Pro',
     price: '$8',
     period: '/mo',
-    sub: 'Everything you need to level up',
+    sub: 'Everything, unlocked',
     features: [
-      'Unlimited repositories',
-      'Full commit history',
-      'Real-time sync',
-      'Advanced analytics',
-      'API access',
-      'Priority support',
+      { label: 'Unlimited repositories', pro: true },
+      { label: 'Full commit history', pro: true },
+      { label: 'Real-time sync', pro: true },
+      { label: 'Advanced analytics', pro: true },
+      { label: 'API access', pro: true },
+      { label: 'Priority support', pro: true },
+      { label: 'Weekly digest email', pro: true },
+      { label: 'Public profile & card', pro: true },
     ],
     highlight: true,
   },
+]
+
+const COMPARE_ROWS = [
+  { label: 'Repositories tracked',   free: '5',      pro: 'Unlimited' },
+  { label: 'Commit history',         free: '30 days', pro: 'All time'  },
+  { label: 'Real-time sync',         free: false,    pro: true         },
+  { label: 'Advanced analytics',     free: false,    pro: true         },
+  { label: 'API access',             free: false,    pro: true         },
+  { label: 'Public profile & card',  free: true,     pro: true         },
+  { label: 'Weekly digest email',    free: true,     pro: true         },
+  { label: 'Priority support',       free: false,    pro: true         },
 ]
 
 const STATS = [
@@ -360,11 +379,13 @@ export default function LandingPage() {
             <h2 className="text-4xl font-bold tracking-tight">Simple, transparent pricing</h2>
             <p className="mt-4 text-slate-500">Start free. Upgrade when you need more.</p>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {PRICING.map(({ plan, price, period, sub, features, highlight }) => (
+
+          {/* Cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-stretch">
+            {PRICING.map(({ plan, price, period, sub, highlight }) => (
               <div
                 key={plan}
-                className={`relative rounded-2xl border p-7 ${
+                className={`relative flex flex-col rounded-2xl border p-7 ${
                   highlight
                     ? 'border-cyan-500/40 bg-gradient-to-b from-cyan-500/10 to-bg'
                     : 'border-border bg-surface'
@@ -383,19 +404,77 @@ export default function LandingPage() {
                   </div>
                   <p className="mt-1 text-xs text-slate-600">{sub}</p>
                 </div>
-                <ul className="mb-6 space-y-2.5">
-                  {features.map((f) => (
-                    <li key={f} className="flex items-center gap-2.5 text-sm text-slate-400">
-                      <Check className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Button asChild variant={highlight ? 'default' : 'outline'} className="w-full">
+
+                {/* Key differentiators per plan */}
+                {highlight ? (
+                  <ul className="mb-6 space-y-2.5">
+                    {['Unlimited repositories', 'Full commit history', 'Real-time sync', 'Advanced analytics', 'API access', 'Priority support', 'Public profile & card', 'Weekly digest email'].map((f) => (
+                      <li key={f} className="flex items-center gap-2.5 text-sm text-slate-300">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <ul className="mb-6 space-y-2.5">
+                    {['5 tracked repositories', '30-day history', 'Public profile & card', 'Weekly digest email'].map((f) => (
+                      <li key={f} className="flex items-center gap-2.5 text-sm text-slate-400">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-slate-600" />
+                        {f}
+                      </li>
+                    ))}
+                    {['Real-time sync', 'Advanced analytics', 'API access', 'Priority support'].map((f) => (
+                      <li key={f} className="flex items-center gap-2.5 text-sm text-slate-600 line-through decoration-slate-700">
+                        <span className="h-3.5 w-3.5 shrink-0 flex items-center justify-center text-slate-700">—</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <Button asChild variant={highlight ? 'default' : 'outline'} className="mt-auto w-full">
                   <a href={`${API_URL}/api/v1/auth/github`}>Get started</a>
                 </Button>
               </div>
             ))}
+          </div>
+
+          {/* Comparison table */}
+          <div className="mt-10 overflow-hidden rounded-xl border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-surface-2">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-500">Feature</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-widest text-slate-500">Free</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-widest text-cyan-400">Pro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARE_ROWS.map(({ label, free, pro }, i) => (
+                  <tr key={label} className={`border-b border-border last:border-0 ${i % 2 === 0 ? 'bg-surface' : 'bg-surface-2/50'}`}>
+                    <td className="px-5 py-3 text-slate-400">{label}</td>
+                    <td className="px-5 py-3 text-center">
+                      {typeof free === 'boolean' ? (
+                        free
+                          ? <Check className="mx-auto h-4 w-4 text-slate-500" />
+                          : <span className="text-slate-700">—</span>
+                      ) : (
+                        <span className="text-slate-500">{free}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      {typeof pro === 'boolean' ? (
+                        pro
+                          ? <Check className="mx-auto h-4 w-4 text-cyan-400" />
+                          : <span className="text-slate-700">—</span>
+                      ) : (
+                        <span className="font-medium text-cyan-400">{pro}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
