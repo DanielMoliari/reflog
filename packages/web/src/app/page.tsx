@@ -145,7 +145,7 @@ function HeroPreview() {
           <div className="col-span-1 rounded-lg border border-white/6 bg-[#161616] p-3">
             <p className="mb-2 text-[8px] font-semibold uppercase tracking-widest text-slate-600">CURRENT STREAK</p>
             <p className="text-2xl font-black text-amber-400">14</p>
-            <p className="text-[9px] text-slate-600">days 🔥</p>
+            <p className="text-[9px] text-slate-600">days</p>
           </div>
           <div className="col-span-2 rounded-lg border border-white/6 bg-[#161616] p-3">
             <p className="mb-2 text-[8px] font-semibold uppercase tracking-widest text-slate-600">LANGUAGES</p>
