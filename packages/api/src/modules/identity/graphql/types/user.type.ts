@@ -32,9 +32,6 @@ export class UserType {
   @Field({ defaultValue: true })
   streakAlertsEnabled: boolean
 
-  @Field({ defaultValue: false, description: 'Whether the user has enabled the shareable /u/{username} page' })
-  publicProfile: boolean
-
   @Field({ defaultValue: true, description: 'Include the tracked repositories list on the public profile' })
   publicShowRepos: boolean
 

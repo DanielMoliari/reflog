@@ -12,7 +12,6 @@ export interface User {
   plan: Plan
   notificationsEnabled: boolean
   streakAlertsEnabled: boolean
-  publicProfile: boolean
   publicShowRepos: boolean
   publicShowStreak: boolean
   createdAt: string

@@ -12,7 +12,6 @@ export const ME_QUERY = gql`
       plan
       notificationsEnabled
       streakAlertsEnabled
-      publicProfile
       publicShowRepos
       publicShowStreak
     }

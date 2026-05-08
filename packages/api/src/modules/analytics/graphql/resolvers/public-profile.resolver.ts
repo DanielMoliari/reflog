@@ -1,14 +1,5 @@
-import { UseGuards } from '@nestjs/common'
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { GqlAuthGuard } from '../../../../common/guards/gql-auth.guard'
-import { CurrentUser, type JwtPayload } from '../../../../common/decorators/current-user.decorator'
-import { IdentityService } from '../../../identity/application/services/identity.service'
-import {
-  EnablePublicProfileInput,
-  UpdatePublicProfilePrefsInput,
-} from '../../../identity/graphql/types/public-profile.input'
+import { Args, Query, Resolver } from '@nestjs/graphql'
 import { PublicProfileType } from '../../../identity/graphql/types/public-profile.type'
-import { UserType } from '../../../identity/graphql/types/user.type'
 import { PublicProfileService } from '../../application/services/public-profile.service'
 import { GitHubLookupService } from '../../application/services/github-lookup.service'
 import { SearchProfileResultType, SearchRepoResultType } from '../types/search-profile.type'
@@ -17,7 +8,6 @@ import { SearchProfileResultType, SearchRepoResultType } from '../types/search-p
 export class PublicProfileResolver {
   constructor(
     private readonly publicProfileService: PublicProfileService,
-    private readonly identityService: IdentityService,
     private readonly gitHubLookupService: GitHubLookupService,
   ) {}
 
@@ -81,10 +71,9 @@ export class PublicProfileResolver {
 
   // ── Public read query ────────────────────────────────────────────────────
   // Intentionally NO @UseGuards: the /u/{username} page must work for anonymous visitors.
-  // The service returns null when the user opted out, so the resolver simply forwards.
   @Query(() => PublicProfileType, {
     nullable: true,
-    description: 'Anonymous-readable curated profile. Returns null when the user has not opted in.',
+    description: 'Anonymous-readable curated profile for any registered user.',
   })
   async publicProfile(@Args('username') username: string): Promise<PublicProfileType | null> {
     const data = await this.publicProfileService.getPublicProfile(username)
@@ -109,34 +98,4 @@ export class PublicProfileResolver {
     return out
   }
 
-  // ── Authenticated mutations ──────────────────────────────────────────────
-  @Mutation(() => UserType, { description: 'Reserve a username and turn the public profile on.' })
-  @UseGuards(GqlAuthGuard)
-  async enablePublicProfile(
-    @CurrentUser() current: JwtPayload,
-    @Args('input') input: EnablePublicProfileInput,
-  ): Promise<UserType> {
-    const user = await this.identityService.enablePublicProfile(current.sub, input.username)
-    await this.publicProfileService.invalidate(user.username)
-    return user as unknown as UserType
-  }
-
-  @Mutation(() => UserType, { description: 'Toggle which sections appear on the public profile.' })
-  @UseGuards(GqlAuthGuard)
-  async updatePublicProfilePrefs(
-    @CurrentUser() current: JwtPayload,
-    @Args('input') input: UpdatePublicProfilePrefsInput,
-  ): Promise<UserType> {
-    const user = await this.identityService.updatePublicProfilePrefs(current.sub, input)
-    await this.publicProfileService.invalidate(user.username)
-    return user as unknown as UserType
-  }
-
-  @Mutation(() => UserType, { description: 'Hide the public profile while keeping the username reserved.' })
-  @UseGuards(GqlAuthGuard)
-  async disablePublicProfile(@CurrentUser() current: JwtPayload): Promise<UserType> {
-    const user = await this.identityService.disablePublicProfile(current.sub)
-    await this.publicProfileService.invalidate(user.username)
-    return user as unknown as UserType
-  }
 }

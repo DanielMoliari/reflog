@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useQuery } from '@apollo/client/react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { Share2, Copy, Check, ArrowRight, ExternalLink } from 'lucide-react'
+import { Share2, Copy, Check, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ME_QUERY } from '@/graphql/queries'
 import type { User } from '@/graphql/types'
@@ -21,17 +20,9 @@ export function ShareProfileButton() {
 
   const me = data.me
 
-  // Not yet public → small CTA to settings
-  if (!me.publicProfile || !me.username) {
-    return (
-      <Button asChild variant="outline" size="sm">
-        <Link href="/settings">
-          <Share2 className="h-3.5 w-3.5" />
-          Make public
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </Button>
-    )
+  // No username set yet — nothing to share
+  if (!me.username) {
+    return null
   }
 
   const url = typeof window !== 'undefined'
@@ -76,12 +67,14 @@ export function ShareProfileButton() {
               </a>
             </Button>
           </div>
-          <Link
-            href="/settings"
+          <a
+            href={`/u/${me.username}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="mt-3 block text-xs text-slate-500 hover:text-slate-300 transition-colors"
           >
-            Manage public profile preferences →
-          </Link>
+            View your public profile →
+          </a>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
