@@ -49,11 +49,26 @@ export class PrismaUserRepository implements IUserRepository {
     })
   }
 
-  updateProfile(userId: string, data: { name?: string; email?: string }): Promise<User> {
+  updateProfile(userId: string, data: { name?: string; email?: string; notificationsEnabled?: boolean; streakAlertsEnabled?: boolean }): Promise<User> {
     return this.prisma.user.update({ where: { id: userId }, data })
   }
 
   updatePublicProfile(userId: string, data: UpdatePublicProfileData): Promise<User> {
     return this.prisma.user.update({ where: { id: userId }, data })
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await this.prisma.user.delete({ where: { id: userId } })
+  }
+
+  async getPlatformStats(): Promise<{ userCount: number; commitCount: number }> {
+    const [userCount, commitSum] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.dailyMetrics.aggregate({ _sum: { commits: true } }),
+    ])
+    return {
+      userCount,
+      commitCount: commitSum._sum.commits ?? 0,
+    }
   }
 }

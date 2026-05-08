@@ -41,6 +41,16 @@ function formatStaleAge(ms: number): string {
   return `${m}m without sync`
 }
 
+function timeAgo(date: Date): string {
+  const s = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (s < 60) return 'just now'
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
 const STALE_MS = 6 * 60 * 60 * 1000
 
 type SyncPhase = 'idle' | 'stale' | 'syncing' | 'synced' | 'error'
@@ -51,6 +61,14 @@ const SYNC_STYLES: Record<SyncPhase, { border: string; bg: string; text: string 
   syncing: { border: 'border-accent/30',             bg: 'bg-accent/5',           text: 'text-accent' },
   synced:  { border: 'border-emerald-500/30',        bg: 'bg-emerald-500/5',      text: 'text-emerald-400' },
   error:   { border: 'border-danger/30',             bg: 'bg-danger/5',           text: 'text-danger' },
+}
+
+interface Notification {
+  id: string
+  title: string
+  body: string
+  at: Date
+  read: boolean
 }
 
 interface NavHeaderProps {
@@ -64,13 +82,15 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
   const title = getPageTitle(pathname, reposData?.repositories)
 
   const [syncedFlash, setSyncedFlash] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [bellOpen, setBellOpen] = useState(false)
   const { toggleMobileMenu } = useUIStore()
 
   const tracked = (reposData?.repositories ?? []).filter((r) => r.isTracked)
   const isSyncing = tracked.some((r) => r.syncState === 'SYNCING')
   const hasError = !isSyncing && tracked.some((r) => r.syncState === 'ERROR')
 
-  // Flash "Synced" 2.5s when syncing transitions from true → false
+  // Flash "Synced" 2.5s when syncing transitions true → false
   useEffect(() => {
     if (isSyncing) return
     setSyncedFlash(true)
@@ -78,7 +98,50 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
     return () => clearTimeout(t)
   }, [isSyncing])
 
-  // Derive last synced timestamp
+  // Emit a notification when sync completes successfully
+  const prevSyncing = useIsPrevious(isSyncing)
+  useEffect(() => {
+    if (prevSyncing && !isSyncing && !hasError && tracked.length > 0) {
+      setNotifications((prev) => [
+        {
+          id: `sync-${Date.now()}`,
+          title: 'Sync complete',
+          body: `${tracked.length} ${tracked.length === 1 ? 'repo' : 'repos'} synced successfully.`,
+          at: new Date(),
+          read: false,
+        },
+        ...prev.slice(0, 9),
+      ])
+    }
+  }, [isSyncing, prevSyncing, hasError, tracked.length])
+
+  // Emit a notification when an error repo is detected
+  useEffect(() => {
+    if (!hasError) return
+    const errRepos = tracked.filter((r) => r.syncState === 'ERROR')
+    if (errRepos.length === 0) return
+    const ids = errRepos.map((r) => r.id).join(',')
+    setNotifications((prev) => {
+      if (prev.some((n) => n.id === `err-${ids}`)) return prev
+      return [
+        {
+          id: `err-${ids}`,
+          title: 'Sync error',
+          body: `${errRepos.length} ${errRepos.length === 1 ? 'repo' : 'repos'} failed to sync. Click Sync to retry.`,
+          at: new Date(),
+          read: false,
+        },
+        ...prev.slice(0, 9),
+      ]
+    })
+  }, [hasError, tracked])
+
+  const unread = notifications.filter((n) => !n.read).length
+
+  function markAllRead() {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  }
+
   const lastSyncedAt = tracked.reduce<number | null>((best, r) => {
     if (!r.lastSyncedAt) return best
     const t = new Date(r.lastSyncedAt).getTime()
@@ -90,14 +153,10 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
     lastSyncedAt === null || (staleMs !== null && staleMs > STALE_MS)
   )
 
-  const syncPhase: SyncPhase = isSyncing
-    ? 'syncing'
-    : syncedFlash
-    ? 'synced'
-    : hasError
-    ? 'error'
-    : isStale
-    ? 'stale'
+  const syncPhase: SyncPhase = isSyncing ? 'syncing'
+    : syncedFlash ? 'synced'
+    : hasError ? 'error'
+    : isStale ? 'stale'
     : 'idle'
 
   const { border, bg, text } = SYNC_STYLES[syncPhase]
@@ -156,7 +215,7 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
       {/* Right — sync + separator + bell + avatar */}
       <div className="flex items-center justify-end gap-2">
 
-        {/* Sync button with colored border per state */}
+        {/* Sync button */}
         <button
           onClick={onSyncOpen}
           className={[
@@ -168,32 +227,57 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
           <span className={text}>{syncLabel}</span>
         </button>
 
-        {/* Separator */}
         <div className="mx-1 h-4 w-px bg-border-2" />
 
         {/* Bell */}
-        <DropdownMenu.Root>
+        <DropdownMenu.Root open={bellOpen} onOpenChange={(o) => { setBellOpen(o); if (o) markAllRead() }}>
           <DropdownMenu.Trigger asChild>
             <button className="relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-surface-2 hover:text-slate-300 focus-visible:outline-none">
               <Bell className="h-4 w-4" />
+              {unread > 0 && (
+                <span className="absolute right-1 top-1 flex h-2 w-2 items-center justify-center rounded-full bg-accent" />
+              )}
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content
               align="end"
               sideOffset={6}
-              className="z-50 w-72 rounded-lg border border-border-2 bg-surface-2 shadow-xl shadow-black/40 animate-in fade-in-0 zoom-in-95"
+              className="z-50 w-80 rounded-lg border border-border-2 bg-surface-2 shadow-xl shadow-black/40 animate-in fade-in-0 zoom-in-95"
             >
-              <div className="border-b border-border px-4 py-2.5">
+              <div className="border-b border-border px-4 py-2.5 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-300">Notifications</span>
+                {notifications.length > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="cursor-pointer text-[11px] text-slate-600 hover:text-slate-400 transition-colors"
+                  >
+                    Mark all read
+                  </button>
+                )}
               </div>
-              <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border-2 bg-surface">
-                  <Bell className="h-4 w-4 text-slate-600" />
+              {notifications.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border-2 bg-surface">
+                    <Bell className="h-4 w-4 text-slate-600" />
+                  </div>
+                  <p className="text-xs font-medium text-slate-500">No notifications yet</p>
+                  <p className="text-[11px] text-slate-700">Sync results and streak alerts will appear here</p>
                 </div>
-                <p className="text-xs font-medium text-slate-500">No notifications yet</p>
-                <p className="text-[11px] text-slate-700">Sync results, streak alerts and milestones will appear here</p>
-              </div>
+              ) : (
+                <div className="max-h-72 overflow-y-auto divide-y divide-border">
+                  {notifications.map((n) => (
+                    <div key={n.id} className="flex items-start gap-3 px-4 py-3">
+                      <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${n.read ? 'bg-transparent' : 'bg-accent'}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-200">{n.title}</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">{n.body}</p>
+                        <p className="text-[10px] text-slate-700 mt-1">{timeAgo(n.at)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
@@ -219,15 +303,11 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
               align="end"
               sideOffset={6}
             >
-              {/* User identity */}
               <div className="border-b border-border px-4 py-3">
-                <p className="text-sm font-semibold text-slate-100">
-                  {user?.name ?? user?.username}
-                </p>
+                <p className="text-sm font-semibold text-slate-100">{user?.name ?? user?.username}</p>
                 <p className="mt-0.5 text-xs text-accent">@{user?.username}</p>
               </div>
 
-              {/* Actions */}
               <div className="p-1">
                 {user?.username && (
                   <DropdownMenu.Item asChild>
@@ -271,4 +351,15 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
       </div>
     </header>
   )
+}
+
+// Tracks the previous value of a boolean across renders
+function useIsPrevious(value: boolean): boolean {
+  const [prev, setPrev] = useState(value)
+  const [cur, setCur] = useState(value)
+  if (value !== cur) {
+    setPrev(cur)
+    setCur(value)
+  }
+  return prev
 }

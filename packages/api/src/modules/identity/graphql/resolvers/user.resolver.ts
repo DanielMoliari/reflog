@@ -1,10 +1,28 @@
 import { NotFoundException, UseGuards } from '@nestjs/common'
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
+import { Args, Field, InputType, Mutation, ObjectType, Query, Resolver } from '@nestjs/graphql'
 import { GqlAuthGuard } from '../../../../common/guards/gql-auth.guard'
 import { CurrentUser, type JwtPayload } from '../../../../common/decorators/current-user.decorator'
 import { IdentityService } from '../../application/services/identity.service'
 import { UpdateProfileInput } from '../types/update-profile.input'
 import { UserType } from '../types/user.type'
+
+@InputType()
+class UpdateNotificationPrefsInput {
+  @Field({ nullable: true }) notificationsEnabled?: boolean
+  @Field({ nullable: true }) streakAlertsEnabled?: boolean
+}
+
+@InputType()
+class UpdatePublicProfilePrefsInput {
+  @Field({ nullable: true }) showRepos?: boolean
+  @Field({ nullable: true }) showStreak?: boolean
+}
+
+@ObjectType()
+class PlatformStatsType {
+  @Field() userCount: number
+  @Field() commitCount: number
+}
 
 @Resolver(() => UserType)
 export class UserResolver {
@@ -15,9 +33,12 @@ export class UserResolver {
   async me(@CurrentUser() currentUser: JwtPayload): Promise<UserType | null> {
     const user = await this.identityService.findById(currentUser.sub)
     if (!user) return null
-    // username is a real column now (set when the user enables their public profile);
-    // pass it through as-is — null means they haven't picked a public handle yet.
     return user as unknown as UserType
+  }
+
+  @Query(() => PlatformStatsType, { description: 'Public platform stats for the landing page' })
+  async platformStats(): Promise<PlatformStatsType> {
+    return this.identityService.getPlatformStats()
   }
 
   @Mutation(() => UserType, { description: 'Update the authenticated user profile' })
@@ -29,5 +50,37 @@ export class UserResolver {
     const user = await this.identityService.updateProfile(currentUser.sub, input)
     if (!user) throw new NotFoundException('User not found')
     return user as unknown as UserType
+  }
+
+  @Mutation(() => UserType, { description: 'Update notification preferences' })
+  @UseGuards(GqlAuthGuard)
+  async updateNotificationPrefs(
+    @CurrentUser() currentUser: JwtPayload,
+    @Args('input') input: UpdateNotificationPrefsInput,
+  ): Promise<UserType> {
+    const data: Record<string, boolean> = {}
+    if (input.notificationsEnabled !== undefined) data['notificationsEnabled'] = input.notificationsEnabled
+    if (input.streakAlertsEnabled !== undefined) data['streakAlertsEnabled'] = input.streakAlertsEnabled
+    const user = await this.identityService.updateProfile(currentUser.sub, data as { name?: string; email?: string })
+    return user as unknown as UserType
+  }
+
+  @Mutation(() => UserType, { description: 'Update public profile visibility preferences' })
+  @UseGuards(GqlAuthGuard)
+  async updatePublicProfilePrefs(
+    @CurrentUser() currentUser: JwtPayload,
+    @Args('input') input: UpdatePublicProfilePrefsInput,
+  ): Promise<UserType> {
+    const user = await this.identityService.updatePublicProfilePrefs(currentUser.sub, {
+      ...(input.showRepos !== undefined ? { showRepos: input.showRepos } : {}),
+      ...(input.showStreak !== undefined ? { showStreak: input.showStreak } : {}),
+    })
+    return user as unknown as UserType
+  }
+
+  @Mutation(() => Boolean, { description: 'Permanently delete the authenticated user account and all data' })
+  @UseGuards(GqlAuthGuard)
+  async deleteAccount(@CurrentUser() currentUser: JwtPayload): Promise<boolean> {
+    return this.identityService.deleteAccount(currentUser.sub)
   }
 }

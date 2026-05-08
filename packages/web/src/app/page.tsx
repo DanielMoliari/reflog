@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useQuery } from '@apollo/client/react'
 import { AuthRedirect } from '@/components/auth-redirect'
 import {
   GitCommit,
@@ -13,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/brand-logo'
 import { PricingSection } from '@/components/pricing-section'
+import { PLATFORM_STATS_QUERY } from '@/graphql/queries'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:17642'
 
@@ -50,12 +54,11 @@ const FEATURES = [
 ]
 
 
-const STATS = [
-  { value: '50k+', label: 'Commits tracked' },
-  { value: '1.2k', label: 'Active developers' },
-  { value: '98%', label: 'Uptime SLA' },
-  { value: '< 1s', label: 'Sync latency' },
-]
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M+`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}k+`
+  return String(n)
+}
 
 function HeroPreview() {
   const heatCols = Array.from({ length: 52 })
@@ -144,6 +147,11 @@ function HeroPreview() {
 }
 
 export default function LandingPage() {
+  const { data: statsData } = useQuery<{ platformStats: { userCount: number; commitCount: number } }>(
+    PLATFORM_STATS_QUERY,
+  )
+  const stats = statsData?.platformStats
+
   return (
     <div className="min-h-screen bg-bg text-slate-100">
       <AuthRedirect />
@@ -222,7 +230,12 @@ export default function LandingPage() {
       <section className="border-y border-border bg-surface px-6 py-12">
         <div className="mx-auto max-w-5xl">
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
-            {STATS.map(({ value, label }) => (
+            {[
+              { value: stats ? formatCount(stats.commitCount) : '…', label: 'Commits tracked' },
+              { value: stats ? formatCount(stats.userCount) : '…', label: 'Developers joined' },
+              { value: '98%', label: 'Uptime SLA' },
+              { value: '< 1s', label: 'Sync latency' },
+            ].map(({ value, label }) => (
               <div key={label} className="text-center">
                 <p className="text-3xl font-black text-cyan-400">{value}</p>
                 <p className="mt-1 text-sm text-slate-500">{label}</p>

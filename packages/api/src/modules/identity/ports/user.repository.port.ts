@@ -19,8 +19,10 @@ export interface IUserRepository {
     avatarUrl: string | null
     encryptedToken: string
   }): Promise<User>
-  updateProfile(userId: string, data: { name?: string; email?: string }): Promise<User>
+  updateProfile(userId: string, data: { name?: string; email?: string; notificationsEnabled?: boolean; streakAlertsEnabled?: boolean }): Promise<User>
   updatePublicProfile(userId: string, data: UpdatePublicProfileData): Promise<User>
+  deleteUser(userId: string): Promise<void>
+  getPlatformStats(): Promise<{ userCount: number; commitCount: number }>
 }
 
 export const USER_REPOSITORY = Symbol('IUserRepository')

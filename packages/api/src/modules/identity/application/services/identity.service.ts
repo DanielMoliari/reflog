@@ -58,7 +58,7 @@ export class IdentityService {
     return this.encryptionService.decrypt(user.githubToken)
   }
 
-  async updateProfile(userId: string, data: { name?: string; email?: string }): Promise<User> {
+  async updateProfile(userId: string, data: { name?: string; email?: string; notificationsEnabled?: boolean; streakAlertsEnabled?: boolean }): Promise<User> {
     return this.userRepository.updateProfile(userId, data)
   }
 
@@ -101,5 +101,14 @@ export class IdentityService {
   async disablePublicProfile(userId: string): Promise<User> {
     // Username stays reserved so re-enabling preserves shareable links and prevents handle squatting.
     return this.userRepository.updatePublicProfile(userId, { publicProfile: false })
+  }
+
+  async deleteAccount(userId: string): Promise<boolean> {
+    await this.userRepository.deleteUser(userId)
+    return true
+  }
+
+  async getPlatformStats(): Promise<{ userCount: number; commitCount: number }> {
+    return this.userRepository.getPlatformStats()
   }
 }

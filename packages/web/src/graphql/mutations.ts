@@ -47,9 +47,24 @@ export const UPDATE_NOTIFICATION_PREFS = gql`
   }
 `
 
+export const UPDATE_PUBLIC_PROFILE_PREFS = gql`
+  mutation UpdatePublicProfilePrefs($input: UpdatePublicProfilePrefsInput!) {
+    updatePublicProfilePrefs(input: $input) {
+      id
+      publicShowRepos
+      publicShowStreak
+    }
+  }
+`
+
+export const DELETE_ACCOUNT = gql`
+  mutation DeleteAccount {
+    deleteAccount
+  }
+`
+
 export const SEND_TEST_DIGEST = gql`
   mutation SendTestDigest {
     sendTestDigest
   }
 `
-

@@ -16,6 +16,10 @@ import { SYNC_REPOSITORY } from '@/graphql/mutations'
 import type { DailyMetrics, HeatmapMetric, StreakData, HeatmapDay, Insights, Repository } from '@/graphql/types'
 import { getTrend } from '@/lib/utils'
 import { Coffee, Sparkles, Clock } from 'lucide-react'
+import { OnboardingPrompt } from '@/components/onboarding-prompt'
+import { StreakMilestoneCard } from '@/components/streak-milestone-card'
+import { ME_QUERY } from '@/graphql/queries'
+import type { User } from '@/graphql/types'
 
 type Range = 'week' | 'month' | 'all'
 
@@ -59,6 +63,7 @@ function sum(rows: DailyMetrics[], key: keyof DailyMetrics): number {
 export default function DashboardPage() {
   const [range, setRange] = useState<Range>('week')
   const [heatmapMetric, setHeatmapMetric] = useState<HeatmapMetric>('COMMITS')
+  const [milestoneDismissed, setMilestoneDismissed] = useState<number | null>(null)
   const meta = RANGES.find((r) => r.value === range)!
 
   const vars = useMemo(() => rangeFor(range), [range])
@@ -85,6 +90,7 @@ export default function DashboardPage() {
   const { data: insightsData, loading: insightsLoading } = useQuery<{ insights: Insights }>(INSIGHTS_QUERY)
 
   const { data: reposData } = useQuery<{ repositories: Repository[] }>(REPOSITORIES_QUERY)
+  const { data: meData } = useQuery<{ me: User }>(ME_QUERY)
   const [syncRepository] = useMutation(SYNC_REPOSITORY)
 
   // Silently trigger a background sync for any tracked repo not synced in the last 6 hours
@@ -100,6 +106,12 @@ export default function DashboardPage() {
   const metrics = metricsData?.metrics ?? []
   const prev = prevData?.metrics ?? []
   const streak = streakData?.streak
+  const trackedRepos = (reposData?.repositories ?? []).filter((r) => r.isTracked)
+  const hasTrackedRepos = trackedRepos.length > 0
+  const currentStreak = streak?.currentStreak ?? 0
+  const MILESTONES = [7, 30, 60, 100, 200, 365]
+  const hitMilestone = MILESTONES.find((m) => currentStreak === m) ?? null
+  const showMilestone = hitMilestone !== null && hitMilestone !== milestoneDismissed
 
   // For week view we want the latest 7 days only as the KPI window
   const kpiSlice = range === 'week' ? metrics.slice(-7) : metrics
@@ -117,6 +129,18 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Onboarding — shown when no repos tracked yet */}
+      {!metricsLoading && !hasTrackedRepos && <OnboardingPrompt />}
+
+      {/* Streak milestone celebration */}
+      {showMilestone && (
+        <StreakMilestoneCard
+          streak={currentStreak}
+          username={meData?.me?.username}
+          onDismiss={() => setMilestoneDismissed(hitMilestone)}
+        />
+      )}
+
       {/* Range selector */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-base font-semibold text-slate-100">Overview</h2>

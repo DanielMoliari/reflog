@@ -41,11 +41,6 @@ type EcosystemConnectionType {
   sharedDeps: [String!]!
 }
 
-input EnablePublicProfileInput {
-  """Lowercase, alphanumeric + dash, 3-30 chars"""
-  username: String!
-}
-
 type FileHotspotType {
   additions: Int!
   churnRatio: Float
@@ -115,11 +110,8 @@ input MetricsRangeInput {
 }
 
 type Mutation {
-  """Hide the public profile while keeping the username reserved."""
-  disablePublicProfile: UserType!
-
-  """Reserve a username and turn the public profile on."""
-  enablePublicProfile(input: EnablePublicProfileInput!): UserType!
+  """Permanently delete the authenticated user account and all data"""
+  deleteAccount: Boolean!
 
   """Re-import all GitHub repositories for the current user"""
   importGitHubRepositories: Boolean!
@@ -142,7 +134,7 @@ type Mutation {
   """Update the authenticated user profile"""
   updateProfile(input: UpdateProfileInput!): UserType!
 
-  """Toggle which sections appear on the public profile."""
+  """Update public profile visibility preferences"""
   updatePublicProfilePrefs(input: UpdatePublicProfilePrefsInput!): UserType!
 }
 
@@ -151,6 +143,11 @@ enum Plan {
   FREE
   PRO
   TEAM
+}
+
+type PlatformStatsType {
+  commitCount: Float!
+  userCount: Float!
 }
 
 type PrImpactType {
@@ -228,9 +225,10 @@ type Query {
   """Get daily metrics for a date range"""
   metrics(input: MetricsRangeInput!): [DailyMetricsType!]!
 
-  """
-  Anonymous-readable curated profile. Returns null when the user has not opted in.
-  """
+  """Public platform stats for the landing page"""
+  platformStats: PlatformStatsType!
+
+  """Anonymous-readable curated profile for any registered user."""
   publicProfile(username: String!): PublicProfileType
 
   """List all tracked repositories"""
@@ -431,9 +429,6 @@ type UserType {
   name: String
   notificationsEnabled: Boolean!
   plan: Plan!
-
-  """Whether the user has enabled the shareable /u/{username} page"""
-  publicProfile: Boolean!
 
   """Include the tracked repositories list on the public profile"""
   publicShowRepos: Boolean!

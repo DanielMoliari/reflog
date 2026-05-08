@@ -164,6 +164,15 @@ export const SEARCH_REPO_QUERY = gql`
   }
 `
 
+export const PLATFORM_STATS_QUERY = gql`
+  query PlatformStats {
+    platformStats {
+      userCount
+      commitCount
+    }
+  }
+`
+
 export const REPOSITORY_DETAIL_QUERY = gql`
   query RepositoryDetail($id: ID!) {
     repositoryDetail(id: $id) {
