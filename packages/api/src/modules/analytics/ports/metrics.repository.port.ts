@@ -12,8 +12,15 @@ export interface UpsertMetricsData {
   reviewsDone: number
 }
 
+export interface RepoMetricsTotals {
+  repoId: string
+  commitCount: number
+  linesAdded: number
+}
+
 export interface IMetricsRepository {
   findRepositoriesByUser(userId: string, trackedOnly?: boolean): Promise<Repository[]>
+  getRepoMetricsTotals(userId: string): Promise<RepoMetricsTotals[]>
   findRepositoryById(id: string): Promise<Repository | null>
   findRepositoryByGithubId(userId: string, githubRepoId: string): Promise<Repository | null>
   upsertRepository(data: {

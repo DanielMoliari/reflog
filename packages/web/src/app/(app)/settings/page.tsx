@@ -1,59 +1,100 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client/react'
-import { Save, AlertTriangle, Mail, Bell, GitBranch, Send, Globe, Copy, Check, ExternalLink } from 'lucide-react'
+import { Save, Bell, GitBranch, Copy, Check, ExternalLink, User, Trash2 } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ME_QUERY } from '@/graphql/queries'
+import { ME_QUERY, REPOSITORIES_QUERY } from '@/graphql/queries'
 import {
   UPDATE_PROFILE,
   UPDATE_NOTIFICATION_PREFS,
-  SEND_TEST_DIGEST,
   ENABLE_PUBLIC_PROFILE,
-  UPDATE_PUBLIC_PROFILE_PREFS,
   DISABLE_PUBLIC_PROFILE,
 } from '@/graphql/mutations'
-import type { User } from '@/graphql/types'
+import type { User as UserType } from '@/graphql/types'
 import { clearToken } from '@/lib/auth'
 
+type Section = 'profile' | 'connections' | 'notifications' | 'danger'
+
+interface NavItem {
+  id: Section
+  label: string
+  Icon: React.ComponentType<{ className?: string }>
+  danger?: boolean
+}
+
+interface NavGroup {
+  label: string
+  danger?: boolean
+  items: NavItem[]
+}
+
+interface Repository {
+  id: string
+  fullName: string
+  lastSyncedAt: string | null
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Account',
+    items: [
+      { id: 'profile' as Section, label: 'Profile', Icon: User },
+      { id: 'connections' as Section, label: 'Connections', Icon: GitBranch },
+    ],
+  },
+  {
+    label: 'Preferences',
+    items: [
+      { id: 'notifications' as Section, label: 'Notifications', Icon: Bell },
+    ],
+  },
+  {
+    label: 'Danger',
+    danger: true,
+    items: [
+      { id: 'danger' as Section, label: 'Delete account', Icon: Trash2, danger: true },
+    ],
+  },
+]
+
 export default function SettingsPage() {
-  const { data, loading } = useQuery<{ me: User }>(ME_QUERY)
+  const [activeSection, setActiveSection] = useState<Section>('profile')
+
+  const { data, loading } = useQuery<{ me: UserType }>(ME_QUERY)
+  const { data: reposData } = useQuery<{ repositories: Repository[] }>(REPOSITORIES_QUERY)
+
   const [updateProfile, { loading: saving }] = useMutation(UPDATE_PROFILE, {
     refetchQueries: [ME_QUERY],
   })
   const [updateNotificationPrefs, { loading: savingPrefs }] = useMutation(UPDATE_NOTIFICATION_PREFS, {
     refetchQueries: [ME_QUERY],
   })
-  const [sendTestDigest, { loading: sendingTest }] = useMutation(SEND_TEST_DIGEST)
   const [enablePublicProfile, { loading: enablingPublic }] = useMutation<
-    { enablePublicProfile: User },
+    { enablePublicProfile: UserType },
     { input: { username: string } }
   >(ENABLE_PUBLIC_PROFILE, { refetchQueries: [ME_QUERY] })
-  const [updatePublicPrefs] = useMutation(UPDATE_PUBLIC_PROFILE_PREFS, { refetchQueries: [ME_QUERY] })
   const [disablePublicProfile, { loading: disablingPublic }] = useMutation(DISABLE_PUBLIC_PROFILE, {
     refetchQueries: [ME_QUERY],
   })
 
   const user = data?.me
+  const repos = reposData?.repositories ?? []
+
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
   const [weeklyDigest, setWeeklyDigest] = useState(true)
   const [streakAlerts, setStreakAlerts] = useState(true)
-  const [testDigestState, setTestDigestState] = useState<'idle' | 'sent' | 'error'>('idle')
-  const [usernameDraft, setUsernameDraft] = useState('')
-  const [usernameError, setUsernameError] = useState<string | null>(null)
+  const [milestoneAlerts, setMilestoneAlerts] = useState(true)
   const [copied, setCopied] = useState(false)
 
   // Populate form when user data loads
-  if (user && name === '' && email === '') {
+  if (user && name === '') {
     if (user.name) setName(user.name)
-    if (user.email) setEmail(user.email)
   }
 
   // Sync notification toggles from server once user loads
@@ -64,7 +105,7 @@ export default function SettingsPage() {
   }, [user])
 
   function handleSave() {
-    void updateProfile({ variables: { input: { name: name || undefined, email: email || undefined } } })
+    void updateProfile({ variables: { input: { name: name || undefined } } })
   }
 
   function handleToggleWeeklyDigest(next: boolean) {
@@ -77,49 +118,9 @@ export default function SettingsPage() {
     void updateNotificationPrefs({ variables: { input: { streakAlertsEnabled: next } } })
   }
 
-  async function handleSendTestDigest() {
-    try {
-      await sendTestDigest()
-      setTestDigestState('sent')
-    } catch {
-      setTestDigestState('error')
-    }
-    setTimeout(() => setTestDigestState('idle'), 4000)
-  }
-
   function handleDisconnect() {
     clearToken()
     window.location.href = '/'
-  }
-
-  // ── Public profile handlers ─────────────────────────────────────────────
-  const USERNAME_RE = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])$/i
-  async function handleEnablePublic() {
-    const candidate = usernameDraft.trim().toLowerCase()
-    if (candidate.length < 3 || candidate.length > 30 || !USERNAME_RE.test(candidate)) {
-      setUsernameError('3-30 chars, letters/digits/dashes, no leading or trailing dash.')
-      return
-    }
-    try {
-      setUsernameError(null)
-      await enablePublicProfile({ variables: { input: { username: candidate } } })
-    } catch (e) {
-      // NestJS BadRequestException puts the real message under extensions.originalError.message.
-      // Apollo Client v4 surfaces it as a CombinedGraphQLErrors with .errors[0].extensions.originalError
-      const err = e as { graphQLErrors?: { extensions?: { originalError?: { message?: string | string[] } }; message?: string }[]; message?: string }
-      const gqlErr = err.graphQLErrors?.[0]
-      const orig = gqlErr?.extensions?.originalError?.message
-      const msg = Array.isArray(orig) ? orig.join(' · ') : orig ?? gqlErr?.message ?? err.message ?? 'Could not enable public profile'
-      setUsernameError(msg)
-    }
-  }
-
-  function handleTogglePublicRepos(next: boolean) {
-    void updatePublicPrefs({ variables: { input: { showRepos: next } } })
-  }
-
-  function handleTogglePublicStreak(next: boolean) {
-    void updatePublicPrefs({ variables: { input: { showStreak: next } } })
   }
 
   function handleDisablePublic() {
@@ -127,195 +128,71 @@ export default function SettingsPage() {
   }
 
   function handleCopyUrl() {
-    const url = publicUrl()
-    if (!url) return
+    if (!user?.username) return
+    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/u/${user.username}`
     void navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
     })
   }
 
-  function publicUrl(): string | null {
-    if (!user?.username) return null
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    return `${origin}/u/${user.username}`
-  }
-
   const initials = user?.name
     ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.username?.slice(0, 2).toUpperCase() ?? '?'
 
-  return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      {/* Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex items-center gap-4">
-            {loading ? (
-              <Skeleton className="h-14 w-14 rounded-full" />
-            ) : (
-              <Avatar className="h-14 w-14">
-                <AvatarImage src={user?.avatarUrl ?? undefined} />
-                <AvatarFallback className="text-base">{initials}</AvatarFallback>
-              </Avatar>
-            )}
-            <div>
-              {loading ? (
-                <>
-                  <Skeleton className="mb-1 h-4 w-32" />
-                  <Skeleton className="h-3 w-24" />
-                </>
-              ) : (
-                <>
-                  <p className="font-medium text-slate-100">{user?.name ?? user?.username}</p>
-                  <p className="text-sm text-slate-500">@{user?.username}</p>
-                </>
-              )}
-            </div>
-            {user?.plan === 'PRO' && <Badge variant="accent" className="ml-auto">Pro</Badge>}
-          </div>
+  // Most recent lastSyncedAt across all repos
+  const lastSyncedAt = repos
+    .map((r) => r.lastSyncedAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1)
 
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-500">Display name</label>
-              {loading ? <Skeleton className="h-9 w-full" /> : (
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                />
-              )}
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-500">Email address</label>
-              {loading ? <Skeleton className="h-9 w-full" /> : (
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                />
-              )}
-            </div>
-          </div>
+  // ── Section renderers ─────────────────────────────────────────────────────
 
-          <Button onClick={handleSave} disabled={saving || loading} size="sm">
-            <Save className="h-3.5 w-3.5" />
-            {saving ? 'Saving…' : 'Save changes'}
-          </Button>
-        </CardContent>
-      </Card>
+  function renderProfile() {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-100">Profile</h2>
+          <p className="mt-0.5 text-xs text-slate-500">Manage how your name appears across reflog.</p>
+        </div>
 
-      {/* Connected account */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Connected account</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2">
-                <GitBranch className="h-5 w-5 text-slate-300" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-200">GitHub</p>
-                {loading ? (
-                  <Skeleton className="mt-0.5 h-3 w-28" />
-                ) : (
-                  <p className="text-xs text-slate-500">{user?.email ?? user?.name ?? `github #${user?.githubId}`}</p>
-                )}
-              </div>
-            </div>
-            <Badge variant="success">Connected</Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Public profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Public profile</CardTitle>
-          {user?.publicProfile && <Badge variant="success">Live</Badge>}
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2">
-                <Globe className="h-5 w-5 text-slate-300" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-200">Make my profile public</p>
-                <p className="text-xs text-slate-600">
-                  Share a curated read-only page at <span className="font-mono">/u/{'{username}'}</span>.
-                  No email, no private repos.
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={!!user?.publicProfile}
-              onCheckedChange={(next) => {
-                if (next && !user?.username) return // need username first
-                if (next) {
-                  // re-enable after disabling — server still has the username
-                  void enablePublicProfile({ variables: { input: { username: user!.username! } } })
-                } else {
-                  handleDisablePublic()
-                }
-              }}
-              disabled={loading || disablingPublic || enablingPublic || (!user?.publicProfile && !user?.username)}
-            />
-          </div>
-
-          {/* No username yet → show input */}
-          {!loading && !user?.username && (
-            <div className="space-y-2 rounded-lg border border-border-2 bg-surface-2 p-4">
-              <label className="block text-xs font-medium text-slate-400">Pick a public username</label>
-              <div className="flex gap-2">
-                <div className="flex flex-1 items-center rounded-md border border-border-2 bg-surface px-3">
-                  <span className="font-mono text-xs text-slate-600">devpulse.app/u/</span>
-                  <input
-                    value={usernameDraft}
-                    onChange={(e) => {
-                      // Strip invalid chars on the way in so the user never sees a confusing rejection later
-                      const cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30)
-                      setUsernameDraft(cleaned)
-                      if (usernameError) setUsernameError(null)
-                    }}
-                    placeholder="your-handle"
-                    className="ml-1 h-9 flex-1 bg-transparent font-mono text-xs text-slate-200 outline-none placeholder:text-slate-700"
-                  />
-                </div>
-                <Button
-                  onClick={() => void handleEnablePublic()}
-                  disabled={enablingPublic || !USERNAME_RE.test(usernameDraft) || usernameDraft.length < 3}
-                  size="default"
-                >
-                  {enablingPublic ? 'Reserving…' : 'Enable'}
-                </Button>
-              </div>
-              {usernameError ? (
-                <p className="text-xs text-danger">{usernameError}</p>
-              ) : usernameDraft.length === 0 ? (
-                <p className="text-[11px] text-slate-600">3-30 characters · letters, numbers, dashes · once taken it&apos;s yours</p>
-              ) : usernameDraft.length < 3 ? (
-                <p className="text-[11px] text-amber-400">{3 - usernameDraft.length} more character{3 - usernameDraft.length !== 1 ? 's' : ''} needed</p>
-              ) : !USERNAME_RE.test(usernameDraft) ? (
-                <p className="text-[11px] text-amber-400">Cannot start or end with a dash</p>
-              ) : (
-                <p className="text-[11px] text-success">✓ <span className="font-mono">{usernameDraft}</span> looks good</p>
-              )}
-            </div>
+        {/* Avatar row */}
+        <div className="flex items-center gap-4">
+          {loading ? (
+            <Skeleton className="h-14 w-14 rounded-full" />
+          ) : (
+            <Avatar className="h-14 w-14">
+              <AvatarImage src={user?.avatarUrl ?? undefined} />
+              <AvatarFallback className="text-base">{initials}</AvatarFallback>
+            </Avatar>
           )}
+          <div>
+            {loading ? (
+              <>
+                <Skeleton className="mb-1 h-4 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-slate-100">{user?.name ?? user?.username}</p>
+                <p className="text-xs text-slate-500">@{user?.username}</p>
+              </>
+            )}
+          </div>
+          {user?.plan === 'PRO' && <Badge variant="accent" className="ml-auto">Pro</Badge>}
+        </div>
 
-          {/* Username exists and profile is public → show URL + section toggles */}
-          {user?.publicProfile && user.username && (
-            <>
-              <div className="flex items-center gap-2 rounded-lg border border-accent/20 bg-accent/5 px-3 py-2.5">
-                <span className="flex-1 truncate font-mono text-xs text-accent">{publicUrl()}</span>
-                <Button variant="ghost" size="icon-sm" onClick={handleCopyUrl} title="Copy URL">
+        <div className="space-y-4 max-w-sm">
+          {/* Public profile URL */}
+          {user?.username && (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-500">Public profile URL</label>
+              <div className="flex items-center gap-2 rounded-md border border-border-2 bg-surface px-3 py-2 max-w-sm">
+                <span className="flex-1 truncate font-mono text-xs text-slate-400">
+                  {typeof window !== 'undefined' ? window.location.origin : ''}/u/{user.username}
+                </span>
+                <Button variant="ghost" size="icon-sm" onClick={handleCopyUrl}>
                   {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                 </Button>
                 <Button asChild variant="ghost" size="icon-sm" title="Open">
@@ -324,70 +201,139 @@ export default function SettingsPage() {
                   </a>
                 </Button>
               </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-200">Show tracked repositories</p>
-                    <p className="text-xs text-slate-600">List of repos appears on your public page</p>
-                  </div>
-                  <Switch
-                    checked={user.publicShowRepos}
-                    onCheckedChange={handleTogglePublicRepos}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-200">Show streak</p>
-                    <p className="text-xs text-slate-600">Current and longest streak counters</p>
-                  </div>
-                  <Switch
-                    checked={user.publicShowStreak}
-                    onCheckedChange={handleTogglePublicStreak}
-                  />
-                </div>
-              </div>
-            </>
+              <p className="mt-1 text-[11px] text-slate-600">Your handle comes from GitHub — not editable</p>
+            </div>
           )}
 
-          {/* Username reserved but profile disabled */}
-          {!user?.publicProfile && user?.username && (
-            <p className="text-xs text-slate-500">
-              Username <span className="font-mono text-slate-300">@{user.username}</span> is reserved for you.
-              Toggle on to publish your profile.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          {/* Display name */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-slate-500">Display name</label>
+            {loading ? <Skeleton className="h-9 w-full" /> : (
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+              />
+            )}
+          </div>
 
-      {/* Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notifications</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-slate-500" />
-              <div>
-                <p className="text-sm font-medium text-slate-200">Weekly digest email</p>
-                <p className="text-xs text-slate-600">Sent every Monday at 9 AM</p>
-              </div>
+          {/* Make profile public toggle */}
+          <div className="flex items-center justify-between rounded-md border border-border-2 bg-surface px-3 py-2.5">
+            <div>
+              <p className="text-xs font-medium text-slate-200">Make profile public</p>
+              <p className="text-[11px] text-slate-600">Share a read-only page at <span className="font-mono">/u/{'{username}'}</span></p>
             </div>
             <Switch
-              checked={weeklyDigest}
-              onCheckedChange={handleToggleWeeklyDigest}
-              disabled={loading || savingPrefs}
+              checked={!!user?.publicProfile}
+              onCheckedChange={(next) => {
+                if (next && !user?.username) return
+                if (next) {
+                  void enablePublicProfile({ variables: { input: { username: user!.username! } } })
+                } else {
+                  handleDisablePublic()
+                }
+              }}
+              disabled={loading || disablingPublic || enablingPublic || (!user?.publicProfile && !user?.username)}
             />
           </div>
-          <div className="h-px bg-border" />
+        </div>
+
+        <Button onClick={handleSave} disabled={saving || loading} size="sm">
+          <Save className="h-3.5 w-3.5" />
+          {saving ? 'Saving…' : 'Save changes'}
+        </Button>
+      </div>
+    )
+  }
+
+  function renderConnections() {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-100">Connections</h2>
+          <p className="mt-0.5 text-xs text-slate-500">Manage connected services and sync preferences.</p>
+        </div>
+
+        {/* GitHub card */}
+        <div className="rounded-lg border border-border-2 bg-surface p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Bell className="h-4 w-4 text-slate-500" />
+              {loading ? (
+                <Skeleton className="h-10 w-10 rounded-full" />
+              ) : (
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={user?.avatarUrl ?? undefined} />
+                  <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+              )}
               <div>
-                <p className="text-sm font-medium text-slate-200">Streak at-risk alerts</p>
-                <p className="text-xs text-slate-600">When your streak is about to break</p>
+                <p className="text-sm font-medium text-slate-200">GitHub</p>
+                {loading ? (
+                  <Skeleton className="mt-0.5 h-3 w-36" />
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    @{user?.username} · Connected
+                    {repos.length > 0 && ` · ${repos.length} ${repos.length === 1 ? 'repository' : 'repositories'}`}
+                  </p>
+                )}
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="success">Active</Badge>
+              <Button variant="outline" size="sm" onClick={handleDisconnect}>
+                Disconnect
+              </Button>
+            </div>
+          </div>
+
+          {/* Sync toggles — UI only */}
+          <div className="border-t border-border pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-200">Auto-sync every 6 hours</p>
+                <p className="text-[11px] text-slate-600">Keeps your metrics up to date automatically</p>
+              </div>
+              <Switch disabled checked={false} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-200">Sync on login</p>
+                <p className="text-[11px] text-slate-600">Trigger a sync each time you sign in</p>
+              </div>
+              <Switch disabled checked={false} />
+            </div>
+          </div>
+
+          {/* Last synced */}
+          {lastSyncedAt && (
+            <p className="text-[11px] text-slate-600">
+              Last synced{' '}
+              {new Date(lastSyncedAt).toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  function renderNotifications() {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-100">Notifications</h2>
+          <p className="mt-0.5 text-xs text-slate-500">Choose what reflog notifies you about.</p>
+        </div>
+
+        <div className="space-y-0 rounded-lg border border-border-2 bg-surface divide-y divide-border">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div>
+              <p className="text-xs font-medium text-slate-200">Streak at risk</p>
+              <p className="text-[11px] text-slate-600">When your streak is about to break</p>
             </div>
             <Switch
               checked={streakAlerts}
@@ -395,51 +341,119 @@ export default function SettingsPage() {
               disabled={loading || savingPrefs}
             />
           </div>
-          <div className="h-px bg-border" />
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between px-4 py-3">
             <div>
-              <p className="text-sm font-medium text-slate-200">Send a test digest</p>
-              <p className="text-xs text-slate-600">Verify your email config without waiting until Monday</p>
+              <p className="text-xs font-medium text-slate-200">New milestone reached</p>
+              <p className="text-[11px] text-slate-600">Personal bests and achievement unlocks</p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleSendTestDigest()}
-              disabled={sendingTest || !user?.email}
-            >
-              <Send className="h-3.5 w-3.5" />
-              {sendingTest
-                ? 'Sending…'
-                : testDigestState === 'sent'
-                  ? 'Sent!'
-                  : testDigestState === 'error'
-                    ? 'Failed — retry'
-                    : 'Send test'}
-            </Button>
+            <Switch
+              checked={milestoneAlerts}
+              onCheckedChange={setMilestoneAlerts}
+            />
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex items-center justify-between px-4 py-3">
+            <div>
+              <p className="text-xs font-medium text-slate-200">Weekly digest</p>
+              <p className="text-[11px] text-slate-600">Summary of your week, sent every Monday at 9 AM</p>
+            </div>
+            <Switch
+              checked={weeklyDigest}
+              onCheckedChange={handleToggleWeeklyDigest}
+              disabled={loading || savingPrefs}
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-      {/* Danger zone */}
-      <Card className="border-danger/20">
-        <CardHeader>
-          <CardTitle className="text-danger">Danger zone</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-start gap-3 rounded-lg border border-danger/10 bg-danger/5 p-4">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-danger mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-200">Sign out of DevPulse</p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                You can always reconnect your GitHub account.
-              </p>
-            </div>
-            <Button variant="destructive" size="sm" onClick={handleDisconnect}>
-              Sign out
-            </Button>
+  function renderDanger() {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold text-danger">Danger zone</h2>
+          <p className="mt-0.5 text-xs text-slate-500">Irreversible actions — proceed with care.</p>
+        </div>
+
+        {/* Sign out */}
+        <div className="rounded-lg border border-border-2 bg-surface p-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium text-slate-200">Sign out of reflog</p>
+            <p className="text-[11px] text-slate-600 mt-0.5">You can always reconnect your GitHub account.</p>
           </div>
-        </CardContent>
-      </Card>
+          <Button variant="destructive" size="sm" onClick={handleDisconnect}>
+            Sign out
+          </Button>
+        </div>
+
+        {/* Delete account placeholder */}
+        <div className="rounded-lg border border-danger/20 bg-danger/5 p-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium text-slate-200">Delete account</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Account deletion is permanent and cannot be undone. Contact support to delete your account.
+            </p>
+          </div>
+          <Button variant="destructive" size="sm" disabled>
+            Delete account
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const sectionContent: Record<Section, () => React.ReactNode> = {
+    profile: renderProfile,
+    connections: renderConnections,
+    notifications: renderNotifications,
+    danger: renderDanger,
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <div className="flex gap-0 min-h-[600px] rounded-xl border border-border overflow-hidden">
+        {/* Left nav */}
+        <nav className="w-48 shrink-0 border-r border-border bg-surface py-4">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p
+                className={
+                  group.danger
+                    ? 'text-[9px] font-bold uppercase tracking-widest text-danger/50 px-4 pt-3 pb-1'
+                    : 'text-[9px] font-bold uppercase tracking-widest text-slate-700 px-4 pt-3 pb-1'
+                }
+              >
+                {group.label}
+              </p>
+              {group.items.map(({ id, label, Icon, danger }) => {
+                const isActive = activeSection === id
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setActiveSection(id)}
+                    className={[
+                      'flex items-center gap-2 px-4 py-1.5 text-xs font-medium cursor-pointer transition-colors w-full text-left',
+                      isActive
+                        ? 'bg-accent/7 border-r-2 border-accent text-slate-100'
+                        : danger
+                          ? 'text-danger/70 hover:text-danger hover:bg-surface-2/50'
+                          : 'text-slate-500 hover:text-slate-300 hover:bg-surface-2/50',
+                    ].join(' ')}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* Right content */}
+        <div className="flex-1 p-6 overflow-y-auto">
+          {sectionContent[activeSection]()}
+        </div>
+      </div>
     </div>
   )
 }

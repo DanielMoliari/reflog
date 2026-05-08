@@ -48,8 +48,6 @@ function buildAxisFormatter(data: ChartDataPoint[]) {
   // Parse as UTC — dates from DB are "2026-05-07T00:00:00.000Z". Without timeZone:UTC
   // toLocaleDateString would shift the date back one day for users in UTC- timezones.
   const dates = data.map((d) => new Date(d.date))
-  const first = dates[0]!
-  const last = dates[dates.length - 1]!
   // Guard: if data isn't sorted, find true min/max
   const minTime = Math.min(...dates.map((d) => d.getTime()))
   const maxTime = Math.max(...dates.map((d) => d.getTime()))

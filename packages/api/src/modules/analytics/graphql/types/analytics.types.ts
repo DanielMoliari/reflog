@@ -31,6 +31,15 @@ export class RepositoryType {
 
   @Field({ nullable: true })
   lastSyncedAt?: Date
+
+  @Field(() => Int, { nullable: true })
+  commitCount?: number
+
+  @Field(() => Int, { nullable: true })
+  linesAdded?: number
+
+  @Field({ nullable: true })
+  pushedAt?: string
 }
 
 @ObjectType()

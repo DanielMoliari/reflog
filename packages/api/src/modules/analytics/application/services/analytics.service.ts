@@ -8,7 +8,9 @@ import { RedisService } from '../../../../infrastructure/cache/redis.service'
 import { IdentityService } from '../../../identity/application/services/identity.service'
 import { PLAN_LIMITS } from '../../../identity/domain/plan-limits'
 import { GITHUB_PORT, type FileChurnDto, type IGitHubPort, type RepoInsightDto } from '../../ports/github.port'
-import { METRICS_REPOSITORY, type IMetricsRepository } from '../../ports/metrics.repository.port'
+import { METRICS_REPOSITORY, type IMetricsRepository, type RepoMetricsTotals } from '../../ports/metrics.repository.port'
+
+export type EnrichedRepository = Repository & Pick<RepoMetricsTotals, 'commitCount' | 'linesAdded'>
 
 export interface HealthBreakdown {
   churn: number
@@ -139,12 +141,21 @@ export class AnalyticsService {
     @InjectQueue(QUEUE_SYNC_REPOSITORY) private readonly syncQueue: Queue,
   ) {}
 
-  async getRepositories(userId: string): Promise<Repository[]> {
-    const existing = await this.metricsRepo.findRepositoriesByUser(userId)
-    if (existing.length > 0) return existing
-    // First call after OAuth — populate from GitHub so the user sees their data
-    await this.importFromGitHub(userId)
-    return this.metricsRepo.findRepositoriesByUser(userId)
+  async getRepositories(userId: string): Promise<EnrichedRepository[]> {
+    let repos = await this.metricsRepo.findRepositoriesByUser(userId)
+    if (repos.length === 0) {
+      // First call after OAuth — populate from GitHub so the user sees their data
+      await this.importFromGitHub(userId)
+      repos = await this.metricsRepo.findRepositoriesByUser(userId)
+    }
+    const totalsMap = new Map(
+      (await this.metricsRepo.getRepoMetricsTotals(userId)).map((t) => [t.repoId, t]),
+    )
+    return repos.map((r) => ({
+      ...r,
+      commitCount: totalsMap.get(r.id)?.commitCount ?? 0,
+      linesAdded: totalsMap.get(r.id)?.linesAdded ?? 0,
+    }))
   }
 
   // Pull every repo the user owns, track them all, and queue sync jobs.

@@ -50,6 +50,9 @@ export interface Repository {
   isTracked: boolean
   syncState: SyncState
   lastSyncedAt: string | null
+  commitCount?: number
+  linesAdded?: number
+  pushedAt?: string
 }
 
 export interface DailyMetrics {

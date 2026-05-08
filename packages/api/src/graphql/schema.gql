@@ -277,11 +277,14 @@ type RepoDetailType {
 }
 
 type RepositoryType {
+  commitCount: Int
   fullName: String!
   id: ID!
   isTracked: Boolean!
   language: String
   lastSyncedAt: DateTime
+  linesAdded: Int
+  pushedAt: String
   syncState: SyncState!
 }
 

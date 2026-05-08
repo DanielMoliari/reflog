@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Bell, LogOut, Menu, RefreshCw, User } from 'lucide-react'
+import { Bell, LogOut, PanelLeftOpen, RefreshCw, User } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useQuery } from '@apollo/client/react'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -17,8 +17,6 @@ import { useUIStore } from '@/store/ui-store'
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/repos': 'Repositories',
-  '/tech': 'Tech graph',
-  '/metrics': 'Metrics',
   '/streaks': 'Streaks',
   '/settings': 'Settings',
 }
@@ -27,7 +25,7 @@ function getPageTitle(pathname: string): string {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
   // /repos/[id] — show repo name from URL segment, resolved by the page itself via <title>
   if (pathname.startsWith('/repos/')) return 'Repository'
-  return 'DevPulse'
+  return 'reflog'
 }
 
 const STALE_MS = 6 * 60 * 60 * 1000
@@ -102,7 +100,7 @@ export function NavHeader() {
             className="cursor-pointer rounded-md p-1.5 text-slate-500 transition-colors hover:bg-surface-2 hover:text-slate-200 md:hidden"
             aria-label="Open menu"
           >
-            <Menu className="h-4 w-4" />
+            <PanelLeftOpen className="h-4 w-4" />
           </button>
           <h1 className="text-sm font-semibold text-slate-200">{title}</h1>
         </div>
@@ -129,8 +127,9 @@ export function NavHeader() {
             )}
           </button>
 
-          <Button variant="ghost" size="icon" className="text-slate-500">
+          <Button variant="ghost" size="icon" className="relative text-slate-500">
             <Bell className="h-4 w-4" />
+            <span className="absolute top-0.5 right-0.5 h-2 w-2 rounded-full bg-orange-500" />
           </Button>
 
           <DropdownMenu.Root>
@@ -144,11 +143,6 @@ export function NavHeader() {
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                 )}
-                {loading ? (
-                  <Skeleton className="h-3 w-20" />
-                ) : (
-                  <span className="text-slate-300 hidden sm:block">{user?.name ?? user?.username ?? 'You'}</span>
-                )}
               </button>
             </DropdownMenu.Trigger>
 
@@ -158,12 +152,22 @@ export function NavHeader() {
                 align="end"
                 sideOffset={6}
               >
+                {user?.username && (
+                  <DropdownMenu.Item asChild>
+                    <a
+                      href={`/u/${user.username}`}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-slate-300 outline-none hover:bg-surface-3 hover:text-slate-100"
+                    >
+                      <User className="h-3.5 w-3.5" /> View public profile
+                    </a>
+                  </DropdownMenu.Item>
+                )}
                 <DropdownMenu.Item asChild>
                   <a
                     href="/settings"
                     className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-slate-300 outline-none hover:bg-surface-3 hover:text-slate-100"
                   >
-                    <User className="h-3.5 w-3.5" /> Profile
+                    <User className="h-3.5 w-3.5" /> Settings
                   </a>
                 </DropdownMenu.Item>
                 <DropdownMenu.Separator className="my-1 h-px bg-border" />

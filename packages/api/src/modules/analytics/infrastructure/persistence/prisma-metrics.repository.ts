@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import type { DailyMetrics, Repository, Streak } from '@prisma/client'
 import { PrismaService } from '../../../../infrastructure/database/prisma.service'
-import type { IMetricsRepository, UpsertMetricsData } from '../../ports/metrics.repository.port'
+import type { IMetricsRepository, RepoMetricsTotals, UpsertMetricsData } from '../../ports/metrics.repository.port'
 
 @Injectable()
 export class PrismaMetricsRepository implements IMetricsRepository {
@@ -65,6 +65,19 @@ export class PrismaMetricsRepository implements IMetricsRepository {
         ],
       },
     })
+  }
+
+  async getRepoMetricsTotals(userId: string): Promise<RepoMetricsTotals[]> {
+    const rows = await this.prisma.dailyMetrics.groupBy({
+      by: ['repoId'],
+      where: { userId },
+      _sum: { commits: true, additions: true },
+    })
+    return rows.map((r) => ({
+      repoId: r.repoId ?? '',
+      commitCount: r._sum.commits ?? 0,
+      linesAdded: r._sum.additions ?? 0,
+    }))
   }
 
   getDailyMetrics(userId: string, from: Date, to: Date, repoId?: string): Promise<DailyMetrics[]> {

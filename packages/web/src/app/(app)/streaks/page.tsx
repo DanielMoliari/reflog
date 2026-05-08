@@ -2,14 +2,14 @@
 
 import { useMemo } from 'react'
 import { useQuery } from '@apollo/client/react'
-import { Flame, Trophy, Calendar, TrendingUp } from 'lucide-react'
+import { Flame, CheckCircle2, Target } from 'lucide-react'
 import { StreakBadge } from '@/components/streak-badge'
 import { Heatmap } from '@/components/heatmap'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { STREAK_QUERY, HEATMAP_QUERY, METRICS_QUERY } from '@/graphql/queries'
 import type { StreakData, HeatmapDay, DailyMetrics } from '@/graphql/types'
-import { formatDate, formatRelative, pluralize } from '@/lib/utils'
+import { formatRelative, pluralize } from '@/lib/utils'
 
 function yearRange() {
   // day-precision keys keep query variables stable across re-renders
@@ -34,111 +34,76 @@ export default function StreaksPage() {
 
   const activeDays = metrics.filter((m: DailyMetrics) => m.commits > 0).length
   const totalCommits = metrics.reduce<number>((a, m) => a + m.commits, 0)
-  const avgPerActiveDay = activeDays > 0 ? Math.round(totalCommits / activeDays) : 0
+  const totalLinesAdded = metrics.reduce<number>((a, m) => a + m.additions, 0)
 
-  // Find best streaks from heatmap
-  const records = [
-    {
-      icon: Flame,
-      label: 'Current streak',
-      value: streak?.currentStreak ?? 0,
-      unit: 'days',
-      color: 'text-orange-400',
-      bg: 'bg-orange-500/10',
-    },
-    {
-      icon: Trophy,
-      label: 'Longest streak',
-      value: streak?.longestStreak ?? 0,
-      unit: 'days',
-      color: 'text-yellow-400',
-      bg: 'bg-yellow-500/10',
-    },
-    {
-      icon: Calendar,
-      label: 'Active days',
-      value: activeDays,
-      unit: 'this year',
-      color: 'text-accent',
-      bg: 'bg-accent-dim',
-    },
-    {
-      icon: TrendingUp,
-      label: 'Avg commits',
-      value: avgPerActiveDay,
-      unit: 'per active day',
-      color: 'text-success',
-      bg: 'bg-success/10',
-    },
-  ]
+  function formatLarge(n: number): string {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+    return String(n)
+  }
+
+  const MILESTONES = [7, 30, 60, 100]
+  const currentStreak = streak?.currentStreak ?? 0
+  const longestStreak = streak?.longestStreak ?? 0
 
   return (
     <div className="space-y-6">
-      {/* Hero streak display */}
-      <Card className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-orange-500/5 blur-3xl" />
-        </div>
-        <div className="relative flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="mb-1 text-xs font-medium uppercase tracking-widest text-slate-500">
-              Current streak
-            </p>
-            {streakLoading ? (
-              <Skeleton className="h-16 w-36" />
-            ) : (
-              <StreakBadge
-                count={streak?.currentStreak ?? 0}
-                size="lg"
-                active={(streak?.currentStreak ?? 0) > 0}
-              />
-            )}
-            {streak?.lastActiveDate && (
-              <p className="mt-2 text-xs text-slate-600">
-                Last active {formatRelative(streak.lastActiveDate)}
-              </p>
-            )}
-          </div>
+      {/* Compact current streak row */}
+      <div className="flex items-center gap-3 text-sm text-slate-500">
+        <span className="font-medium text-slate-400">Current streak</span>
+        {streakLoading ? (
+          <Skeleton className="h-5 w-16" />
+        ) : (
+          <StreakBadge count={currentStreak} size="sm" active={currentStreak > 0} />
+        )}
+        {streak?.lastActiveDate && (
+          <>
+            <span className="text-slate-700">·</span>
+            <span>Last active {formatRelative(streak.lastActiveDate)}</span>
+          </>
+        )}
+      </div>
 
-          <div className="flex gap-6">
-            <div className="text-center">
-              {streakLoading ? <Skeleton className="mx-auto h-8 w-16" /> : (
-                <p className="tabular text-3xl font-black text-slate-100">{streak?.longestStreak ?? 0}</p>
-              )}
-              <p className="mt-0.5 text-xs text-slate-600">Longest</p>
-            </div>
-            <div className="text-center">
-              {streakLoading ? <Skeleton className="mx-auto h-8 w-16" /> : (
-                <p className="tabular text-3xl font-black text-slate-100">{activeDays}</p>
-              )}
-              <p className="mt-0.5 text-xs text-slate-600">Active days</p>
-            </div>
-            <div className="text-center">
-              {streakLoading ? <Skeleton className="mx-auto h-8 w-16" /> : (
-                <p className="tabular text-3xl font-black text-slate-100">{totalCommits}</p>
-              )}
-              <p className="mt-0.5 text-xs text-slate-600">Total commits</p>
-            </div>
-          </div>
+      {/* Spotify Wrapped 2×2 stats grid */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Total commits — cyan */}
+        <div className="rounded-xl border border-cyan-500/20 bg-gradient-to-br from-slate-900 to-slate-950 p-5">
+          {streakLoading ? (
+            <Skeleton className="h-10 w-24" />
+          ) : (
+            <p className="tabular text-4xl font-black text-cyan-400">{totalCommits}</p>
+          )}
+          <p className="mt-2 text-xs uppercase tracking-widest text-slate-500">commits this year</p>
         </div>
-      </Card>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {records.map(({ icon: Icon, label, value, unit, color, bg }) => (
-          <Card key={label} className="relative">
-            <div className={`mb-3 flex h-8 w-8 items-center justify-center rounded-lg ${bg}`}>
-              <Icon className={`h-4 w-4 ${color}`} />
-            </div>
-            {streakLoading ? (
-              <Skeleton className="h-7 w-20" />
-            ) : (
-              <p className={`tabular text-2xl font-bold ${color}`}>{value}</p>
-            )}
-            <p className="mt-0.5 text-xs text-slate-600">{label}</p>
-            <p className="text-[10px] text-slate-700">{unit}</p>
-          </Card>
-        ))}
+        {/* Longest streak — orange */}
+        <div className="rounded-xl border border-orange-500/20 bg-gradient-to-br from-slate-900 to-slate-950 p-5">
+          {streakLoading ? (
+            <Skeleton className="h-10 w-24" />
+          ) : (
+            <p className="tabular text-4xl font-black text-orange-400">{longestStreak}</p>
+          )}
+          <p className="mt-2 text-xs uppercase tracking-widest text-slate-500">day best streak</p>
+        </div>
+
+        {/* Lines added — green */}
+        <div className="rounded-xl border border-green-500/25 bg-gradient-to-br from-green-950/40 to-slate-950 p-5">
+          {streakLoading ? (
+            <Skeleton className="h-10 w-24" />
+          ) : (
+            <p className="tabular text-4xl font-black text-green-400">{formatLarge(totalLinesAdded)}</p>
+          )}
+          <p className="mt-2 text-xs uppercase tracking-widest text-slate-500">lines written</p>
+        </div>
+
+        {/* Active days — cyan/slate */}
+        <div className="rounded-xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/30 to-slate-950 p-5">
+          {streakLoading ? (
+            <Skeleton className="h-10 w-24" />
+          ) : (
+            <p className="tabular text-4xl font-black text-slate-300">{activeDays}</p>
+          )}
+          <p className="mt-2 text-xs uppercase tracking-widest text-slate-500">days coding</p>
+        </div>
       </div>
 
       {/* Contribution heatmap */}
@@ -154,11 +119,53 @@ export default function StreaksPage() {
         </CardContent>
       </Card>
 
-      {/* Streak motivation */}
-      {!streakLoading && (streak?.currentStreak ?? 0) === 0 && (
+      {/* Milestone badges */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {MILESTONES.map((milestone) => {
+          const achieved = longestStreak >= milestone
+          const isNext = !achieved && currentStreak > 0
+          const daysToGo = milestone - currentStreak
+
+          let badgeClass: string
+          let iconEl: React.ReactNode
+          let statusLabel: string
+          let labelClass: string
+
+          if (achieved) {
+            badgeClass = 'bg-green-500/10 border-green-500/20'
+            iconEl = <CheckCircle2 className="h-5 w-5 text-green-400" />
+            statusLabel = 'Achieved'
+            labelClass = 'text-green-400'
+          } else if (isNext) {
+            badgeClass = 'bg-cyan-500/10 border-cyan-500/20'
+            iconEl = <Target className="h-5 w-5 text-cyan-400" />
+            statusLabel = `${daysToGo} day${daysToGo !== 1 ? 's' : ''} to go`
+            labelClass = 'text-cyan-400'
+          } else {
+            badgeClass = 'bg-slate-800 border-slate-700'
+            iconEl = <Target className="h-5 w-5 text-slate-600" />
+            statusLabel = 'Locked'
+            labelClass = 'text-slate-600'
+          }
+
+          return (
+            <div
+              key={milestone}
+              className={`flex flex-col items-center gap-2 rounded-xl border p-4 ${badgeClass}`}
+            >
+              {iconEl}
+              <p className="text-sm font-semibold text-slate-300">{milestone} days</p>
+              <p className={`text-xs ${labelClass}`}>{statusLabel}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Streak motivation — only when no active streak */}
+      {!streakLoading && currentStreak === 0 && (
         <Card className="border-accent/20 bg-accent-dim">
           <div className="flex items-start gap-3">
-            <Flame className="h-5 w-5 shrink-0 text-accent mt-0.5" />
+            <Flame className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
             <div>
               <p className="font-medium text-slate-100">Start your streak today</p>
               <p className="mt-0.5 text-sm text-slate-400">

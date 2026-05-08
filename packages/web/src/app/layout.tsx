@@ -7,7 +7,7 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'DevPulse — Developer analytics that make sense',
+  title: 'reflog — dev metrics for people who ship',
   description: 'Track your GitHub activity, streaks, and productivity metrics in one place.',
   icons: { icon: '/favicon.svg' },
 }

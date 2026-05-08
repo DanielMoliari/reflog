@@ -5,14 +5,11 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   GitBranch,
-  BarChart3,
   Flame,
-  Network,
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
   X,
-  Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store/ui-store'
@@ -21,8 +18,6 @@ import { Button } from '@/components/ui/button'
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/repos', label: 'Repositories', icon: GitBranch },
-  { href: '/tech', label: 'Tech graph', icon: Network },
-  { href: '/metrics', label: 'Metrics', icon: BarChart3 },
   { href: '/streaks', label: 'Streaks', icon: Flame },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -74,10 +69,17 @@ export function MobileDrawer() {
       <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-surface md:hidden">
         <div className="flex h-14 items-center justify-between border-b border-border px-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent">
-              <Zap className="h-4 w-4 text-black" fill="currentColor" />
+            <div
+              className="flex shrink-0 items-center justify-center"
+              style={{ width: 36, height: 36, background: '#060a0d', border: '1px solid #06b6d4', borderRadius: 7 }}
+            >
+              <svg width="28" height="20" viewBox="0 0 28 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4,10 L8,10 L10,4 L14,16 L17,2 L20,10 L24,10" stroke="#06b6d4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </div>
-            <span className="text-sm font-semibold tracking-tight text-slate-100">DevPulse</span>
+            <span className="text-sm font-extrabold tracking-tight" style={{ fontWeight: 800 }}>
+              <span className="text-slate-100">ref</span><span className="text-cyan-400">log</span>
+            </span>
           </div>
           <button
             onClick={() => setMobileMenuOpen(false)}
@@ -106,11 +108,18 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className={cn('flex h-14 items-center border-b border-border px-3', sidebarOpen ? 'gap-2.5' : 'justify-center')}>
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent">
-          <Zap className="h-4 w-4 text-black" fill="currentColor" />
+        <div
+          className="flex shrink-0 items-center justify-center"
+          style={{ width: 36, height: 36, background: '#060a0d', border: '1px solid #06b6d4', borderRadius: 7 }}
+        >
+          <svg width="28" height="20" viewBox="0 0 28 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4,10 L8,10 L10,4 L14,16 L17,2 L20,10 L24,10" stroke="#06b6d4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </div>
         {sidebarOpen && (
-          <span className="text-sm font-semibold text-slate-100 tracking-tight">DevPulse</span>
+          <span className="text-sm tracking-tight" style={{ fontWeight: 800 }}>
+            <span className="text-slate-100">ref</span><span className="text-cyan-400">log</span>
+          </span>
         )}
       </div>
 

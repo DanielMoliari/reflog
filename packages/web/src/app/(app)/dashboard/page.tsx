@@ -9,7 +9,6 @@ import { ActivityRadial } from '@/components/activity-radial'
 import { StreakBadge } from '@/components/streak-badge'
 import { HourlyActivity } from '@/components/hourly-activity'
 import { TechGraduationCard } from '@/components/tech-graduation-card'
-import { ShareProfileButton } from '@/components/share-profile-button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { METRICS_QUERY, STREAK_QUERY, HEATMAP_QUERY, INSIGHTS_QUERY, HOURLY_ACTIVITY_QUERY, REPOSITORIES_QUERY } from '@/graphql/queries'
@@ -64,6 +63,10 @@ export default function DashboardPage() {
 
   const vars = useMemo(() => rangeFor(range), [range])
   const prevVars = useMemo(() => prevRangeFor(range), [range])
+  const allTimeVars = useMemo(
+    () => ({ from: '2008-01-01T00:00:00.000Z', to: dayBoundary(0, true).toISOString() }),
+    [],
+  )
 
   const { data: metricsData, loading: metricsLoading } = useQuery<{ metrics: DailyMetrics[] }>(
     METRICS_QUERY, { variables: vars },
@@ -71,6 +74,9 @@ export default function DashboardPage() {
   const { data: prevData } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
     variables: prevVars ?? vars,
     skip: prevVars === null,
+  })
+  const { data: allTimeData } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
+    variables: allTimeVars,
   })
   const { data: streakData, loading: streakLoading } = useQuery<{ streak: StreakData }>(STREAK_QUERY)
   const { data: heatmapData, loading: heatmapLoading } = useQuery<{ heatmap: HeatmapDay[] }>(
@@ -100,8 +106,8 @@ export default function DashboardPage() {
   const prevSlice = range === 'week' ? prev.slice(0, 7) : prev
 
   const commits = sum(kpiSlice, 'commits')
-  const prs = sum(kpiSlice, 'prsMerged')
-  const reviews = sum(kpiSlice, 'reviewsDone')
+  const linesAdded = sum(kpiSlice, 'additions')
+  const activeDaysAllTime = (allTimeData?.metrics ?? []).filter((m) => m.commits > 0).length
 
   const sparkline = metrics.slice(-30).map((m) => ({ value: m.commits }))
 
@@ -114,25 +120,22 @@ export default function DashboardPage() {
       {/* Range selector */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-base font-semibold text-slate-100">Overview</h2>
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
-            {RANGES.map(({ label, value }) => (
-              <button
-                key={value}
-                onClick={() => setRange(value)}
-                className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                  range === value ? 'bg-surface-2 text-slate-100' : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <ShareProfileButton />
+        <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+          {RANGES.map(({ label, value }) => (
+            <button
+              key={value}
+              onClick={() => setRange(value)}
+              className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                range === value ? 'bg-surface-2 text-slate-100' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* KPI cards */}
+      {/* KPI cards — Commits · Lines added · Streak · Active days */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
           title={`Commits ${meta.kpiLabel}`}
@@ -143,15 +146,9 @@ export default function DashboardPage() {
           accent
         />
         <MetricCard
-          title={`PRs merged ${meta.kpiLabel}`}
-          value={prs}
-          {...(trend(prs, 'prsMerged') ? { trend: trend(prs, 'prsMerged')! } : {})}
-          loading={metricsLoading}
-        />
-        <MetricCard
-          title={`Reviews done ${meta.kpiLabel}`}
-          value={reviews}
-          {...(trend(reviews, 'reviewsDone') ? { trend: trend(reviews, 'reviewsDone')! } : {})}
+          title={`Lines added ${meta.kpiLabel}`}
+          value={linesAdded}
+          {...(getTrend(linesAdded, sum(prevSlice, 'additions')) && showTrends ? { trend: getTrend(linesAdded, sum(prevSlice, 'additions'))! } : {})}
           loading={metricsLoading}
         />
         <Card className="relative overflow-hidden">
@@ -166,10 +163,22 @@ export default function DashboardPage() {
             </div>
           )}
         </Card>
+        <Card className="relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-cyan-500/60" />
+          <p className="mb-3 text-xs font-medium uppercase tracking-widest text-slate-500">Active days</p>
+          {metricsLoading ? (
+            <Skeleton className="h-9 w-20" />
+          ) : (
+            <div className="flex items-end gap-3">
+              <span className="text-3xl font-bold tabular-nums text-slate-100">{activeDaysAllTime}</span>
+              <span className="mb-1.5 text-xs text-slate-600">all time</span>
+            </div>
+          )}
+        </Card>
       </div>
 
       {/* Heatmap + Radial day-of-week */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px] items-start">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -204,7 +213,7 @@ export default function DashboardPage() {
             {metricsLoading ? (
               <Skeleton className="h-[320px] w-[320px] rounded-full" />
             ) : (
-              <ActivityRadial data={metrics.map((m) => ({ date: m.date, commits: m.commits }))} size={320} />
+              <ActivityRadial data={metrics.map((m) => ({ date: m.date, commits: m.commits }))} size={240} />
             )}
           </CardContent>
         </Card>

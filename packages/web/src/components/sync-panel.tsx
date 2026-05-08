@@ -74,14 +74,14 @@ export function SyncPanel({ open, onClose }: SyncPanelProps) {
       fullName: r.fullName,
       status: r.syncState === 'SYNCING' ? 'syncing' : 'queued',
     })))
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]) // intentionally omitting data — only re-init when panel opens
 
   // Kick off once rows are ready
   useEffect(() => {
     if (!open || rows.length === 0 || startedRef.current) return
     startedRef.current = true
     void triggerAll()
-  }, [open, rows.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, rows.length]) // intentionally omitting triggerAll — stable ref pattern
 
   async function triggerAll() {
     const repos = ((await refetch()).data?.repositories ?? []).filter((r) => r.isTracked)

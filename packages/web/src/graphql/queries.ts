@@ -46,6 +46,9 @@ export const REPOSITORIES_QUERY = gql`
       isTracked
       syncState
       lastSyncedAt
+      commitCount
+      linesAdded
+      pushedAt
     }
   }
 `

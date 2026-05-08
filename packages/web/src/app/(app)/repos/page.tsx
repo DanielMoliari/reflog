@@ -42,14 +42,23 @@ export default function ReposPage() {
   }
 
   const repos = data?.repositories ?? []
-  const tracked = repos.filter((r) => r.isTracked).length
+
+  const sorted = [...repos].sort((a, b) => {
+    const aDate = a.pushedAt ?? a.lastSyncedAt ?? ''
+    const bDate = b.pushedAt ?? b.lastSyncedAt ?? ''
+    return bDate.localeCompare(aDate)
+  })
+
+  const maxCommits = sorted.reduce((max, r) => Math.max(max, r.commitCount ?? 0), 0)
+
+  const tracked = sorted.filter((r) => r.isTracked).length
 
   // Defensive: PLAN_LIMITS only has FREE/PRO/TEAM keys — fall back to null if the
   // server ever returns an unrecognized plan or while me{} is still loading
   const planLimit = meData?.me?.plan ? PLAN_LIMITS[meData.me.plan]?.maxTrackedRepos ?? null : null
   const overLimit = planLimit !== null && tracked >= planLimit
 
-  const filtered = repos.filter((r) => {
+  const filtered = sorted.filter((r) => {
     const matchSearch = r.fullName.toLowerCase().includes(search.toLowerCase())
     const matchFilter =
       filter === 'all' || (filter === 'tracked' ? r.isTracked : !r.isTracked)
@@ -140,6 +149,7 @@ export default function ReposPage() {
               <RepoCard
                 key={repo.id}
                 repo={repo}
+                maxCommits={maxCommits}
                 onToggleTrack={handleToggle}
                 onSync={handleSync}
                 syncing={syncing && currentSyncId === repo.id}
