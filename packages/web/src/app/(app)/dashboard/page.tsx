@@ -184,8 +184,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Heatmap + Radial day-of-week */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
-        <Card className="self-start">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px] lg:items-stretch">
+        <Card className="flex flex-col">
           <CardHeader>
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <CardTitle>Contribution Activity</CardTitle>
@@ -206,16 +206,16 @@ export default function DashboardPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <Heatmap data={heatmapData?.heatmap ?? []} loading={heatmapLoading} />
+          <CardContent className="flex flex-1 flex-col justify-center">
+            <Heatmap data={heatmapData?.heatmap ?? []} loading={heatmapLoading} metric={heatmapMetric} />
           </CardContent>
         </Card>
-        <Card className="self-start">
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>Day-of-week rhythm</CardTitle>
             <p className="mt-1 text-xs text-slate-500">When the work actually happens</p>
           </CardHeader>
-          <CardContent className="flex items-center justify-center">
+          <CardContent className="flex flex-1 items-center justify-center">
             {metricsLoading ? (
               <Skeleton className="h-[240px] w-[240px] rounded-full" />
             ) : (
@@ -305,19 +305,18 @@ export default function DashboardPage() {
 //   2. Burnout warning (only shown when atRisk = true; supportive tone, never alarmist)
 //   3. Tech graduation moments (auto-detected language transitions over the years)
 function PersonalInsights({ insights, loading }: { insights: Insights | undefined; loading: boolean }) {
-  // Hourly activity is its own slow query (1-3 min cold) — fetched separately so it
-  // doesn't block burnout/graduations which are instant
   const { data: hourlyData, loading: hourlyLoading } = useQuery<{ hourlyActivity: { hours: number[]; peakHour: number; peakRatio: number } | null }>(
     HOURLY_ACTIVITY_QUERY,
   )
 
   if (loading) {
     return (
-      <div className="space-y-3">
-        <h2 className="font-display text-base font-semibold text-slate-100">Personal insights</h2>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
-          <Skeleton className="h-[220px] rounded-xl" />
-          <Skeleton className="h-[220px] rounded-xl" />
+      <div className="space-y-4">
+        <Skeleton className="h-[200px] rounded-xl" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Skeleton className="h-[180px] rounded-xl" />
+          <Skeleton className="h-[180px] rounded-xl" />
+          <Skeleton className="h-[180px] rounded-xl" />
         </div>
       </div>
     )
@@ -332,112 +331,88 @@ function PersonalInsights({ insights, loading }: { insights: Insights | undefine
   if (!hasHourly && !hasBurnout && !hasGraduations) return null
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-base font-semibold text-slate-100">Personal insights</h2>
-        <span className="text-[11px] uppercase tracking-widest text-slate-600">
-          things GitHub won&apos;t tell you
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
-        {/* Productive hours — separate slow query, shows its own skeleton */}
-        <Card>
-          <CardHeader>
+    <section className="space-y-4">
+      {/* Productive hours — full width */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-3.5 w-3.5 text-accent" /> Productive hours
             </CardTitle>
-            <p className="mt-1 text-xs text-slate-500">
-              {hourlyLoading
-                ? 'Crunching a year of commits — first load takes a moment, then it\'s instant.'
-                : 'When you actually commit · last year, UTC'}
-            </p>
-          </CardHeader>
-          <CardContent>
-            {hourlyLoading ? (
-              <Skeleton className="h-[100px] w-full" />
-            ) : hasHourly && hourlyActivity ? (
-              <>
-                <HourlyActivity hours={hourlyActivity.hours} peakHour={hourlyActivity.peakHour} />
-                <div className="mt-3 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">
-                    Peak at <span className="tabular font-semibold text-accent">{formatHour(hourlyActivity.peakHour)}</span>
-                  </span>
-                  <span className="tabular text-slate-600">
-                    {hourlyActivity.peakRatio.toFixed(1)}× the average hour
-                  </span>
-                </div>
-              </>
-            ) : (
-              <div className="flex h-[100px] items-center justify-center text-xs text-slate-600">
-                Not enough commit data yet — sync more repos
+            {!hourlyLoading && hasHourly && hourlyActivity && (
+              <div className="flex items-center gap-4 text-[11px]">
+                <span className="text-slate-500">
+                  Peak at <span className="tabular font-semibold text-accent">{formatHour(hourlyActivity.peakHour)}</span>
+                </span>
+                <span className="tabular text-slate-600">
+                  {hourlyActivity.peakRatio.toFixed(1)}× avg
+                </span>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            {hourlyLoading ? 'Computing your commit patterns…' : 'When you actually commit · last year, UTC'}
+          </p>
+        </CardHeader>
+        <CardContent>
+          {hourlyLoading ? (
+            <Skeleton className="h-[120px] w-full" />
+          ) : hasHourly && hourlyActivity ? (
+            <HourlyActivity hours={hourlyActivity.hours} peakHour={hourlyActivity.peakHour} height={120} />
+          ) : (
+            <div className="flex h-[120px] items-center justify-center text-xs text-slate-600">
+              Not enough commit data yet — sync more repos
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Burnout — only when at risk; supportive copy */}
-        {hasBurnout && (
-          <Card className="relative overflow-hidden border-orange-500/30 bg-gradient-to-br from-orange-500/5 to-surface">
-            <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-orange-500/10 blur-2xl" />
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-orange-300">
-                <Coffee className="h-3.5 w-3.5" /> A gentle nudge
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-relaxed text-slate-200">{burnout.message}</p>
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <div className="flex gap-3 text-[11px] text-slate-500">
-                  <span>
-                    <span className="tabular font-semibold text-slate-200">{burnout.consecutiveDays}d</span> straight
-                  </span>
-                  <span className="text-slate-700">·</span>
-                  <span>
-                    net lines{' '}
-                    <span className="tabular font-semibold text-orange-300">
-                      {burnout.netLinesTrend > 0 ? '+' : ''}{burnout.netLinesTrend}%
-                    </span>
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="cursor-pointer rounded-md border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-200 transition-colors hover:bg-orange-500/20"
-                >
-                  Take a day off?
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Tech graduations — horizontal scroll of from→to cards */}
-      {hasGraduations && (
-        <Card>
+      {/* Burnout alert — only when at risk */}
+      {hasBurnout && (
+        <Card className="relative overflow-hidden border-orange-500/30 bg-gradient-to-br from-orange-500/5 to-surface">
+          <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-orange-500/10 blur-2xl" />
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-accent" /> Tech graduations
+            <CardTitle className="flex items-center gap-2 text-orange-300">
+              <Coffee className="h-3.5 w-3.5" /> A gentle nudge
             </CardTitle>
-            <p className="mt-1 text-xs text-slate-500">
-              Language transitions detected from your repo history
-            </p>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border-2 [&::-webkit-scrollbar-track]:bg-transparent">
-              {techGraduations.map((g) => (
-                <TechGraduationCard
-                  key={`${g.from}-${g.to}-${g.year}`}
-                  from={g.from}
-                  to={g.to}
-                  year={g.year}
-                  message={g.message}
-                  confidence={g.confidence}
-                />
-              ))}
+            <p className="text-sm leading-relaxed text-slate-200">{burnout.message}</p>
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <div className="flex gap-3 text-[11px] text-slate-500">
+                <span><span className="tabular font-semibold text-slate-200">{burnout.consecutiveDays}d</span> straight</span>
+                <span className="text-slate-700">·</span>
+                <span>net lines <span className="tabular font-semibold text-orange-300">{burnout.netLinesTrend > 0 ? '+' : ''}{burnout.netLinesTrend}%</span></span>
+              </div>
+              <button type="button" className="cursor-pointer rounded-md border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-200 transition-colors hover:bg-orange-500/20">
+                Take a day off?
+              </button>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Tech graduations — responsive grid, no wrapper card */}
+      {hasGraduations && (
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-accent" />
+            <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Tech graduations</span>
+            <span className="text-[11px] text-slate-700">· language transitions detected from your repo history</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {techGraduations.map((g) => (
+              <TechGraduationCard
+                key={`${g.from}-${g.to}-${g.year}`}
+                from={g.from}
+                to={g.to}
+                year={g.year}
+                message={g.message}
+                confidence={g.confidence}
+              />
+            ))}
+          </div>
+        </div>
       )}
     </section>
   )

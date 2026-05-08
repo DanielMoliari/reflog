@@ -20,7 +20,7 @@ export function TechGraduationCard({ from, to, year, message, confidence }: Tech
 
   return (
     <div
-      className="group relative w-[300px] shrink-0 overflow-hidden rounded-xl border border-border bg-surface p-4 transition-all hover:border-accent/40"
+      className="group relative overflow-hidden rounded-xl border border-border bg-surface p-4 transition-all hover:border-accent/40"
       style={{ boxShadow: `0 0 0 1px ${toColor}22, 0 8px 32px -8px ${toColor}33` }}
     >
       {/* Glow accent — leans into the new language's color */}

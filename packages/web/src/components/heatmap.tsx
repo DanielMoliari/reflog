@@ -20,9 +20,17 @@ const LEVEL_FILL = [
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 
+const METRIC_LABEL: Record<string, string> = {
+  COMMITS: 'commits',
+  LINES: 'lines',
+  CHURN: 'churn lines',
+  PRS: 'PRs',
+}
+
 interface HeatmapProps {
   data: HeatmapDay[]
   loading?: boolean
+  metric?: string
 }
 
 interface Cell {
@@ -31,8 +39,9 @@ interface Cell {
   level: number
 }
 
-export function Heatmap({ data, loading }: HeatmapProps) {
+export function Heatmap({ data, loading, metric = 'COMMITS' }: HeatmapProps) {
   const [tooltip, setTooltip] = useState<{ cx: number; cy: number; date: string; count: number } | null>(null)
+  const unitLabel = METRIC_LABEL[metric] ?? 'commits'
 
   if (loading) {
     return <Skeleton className="h-[110px] w-full" />
@@ -73,11 +82,13 @@ export function Heatmap({ data, loading }: HeatmapProps) {
   const H = 20 + 7 * STEP
 
   return (
-    <div className="relative overflow-x-auto">
+    <div className="relative w-full">
       <svg
-        width={W}
-        height={H}
-        className="block min-w-[740px]"
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height="100%"
+        preserveAspectRatio="xMidYMid meet"
+        className="block"
         onMouseLeave={() => setTooltip(null)}
       >
         {monthLabels.map(({ col, label }) => (
@@ -127,7 +138,7 @@ export function Heatmap({ data, loading }: HeatmapProps) {
           style={{ left: tooltip.cx, top: tooltip.cy }}
         >
           <span className="text-slate-400">{tooltip.date}</span>
-          <span className="ml-2 font-mono text-accent">{tooltip.count} commits</span>
+          <span className="ml-2 font-mono text-accent">{tooltip.count} {unitLabel}</span>
         </div>
       )}
 
