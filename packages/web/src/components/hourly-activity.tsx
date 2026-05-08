@@ -9,8 +9,8 @@ interface HourlyActivityProps {
 }
 
 function fmtHour(h: number): string {
-  // 0 → "12a", 13 → "1p", 23 → "11p"
-  const period = h < 12 ? 'a' : 'p'
+  // 0 → "12am", 13 → "1pm", 23 → "11pm"
+  const period = h < 12 ? 'am' : 'pm'
   const display = h % 12 === 0 ? 12 : h % 12
   return `${display}${period}`
 }
