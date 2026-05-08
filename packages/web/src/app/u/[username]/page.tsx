@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card } from '@/components/ui/card'
 import { Heatmap } from '@/components/heatmap'
 import { EmbedCardButton } from '@/components/embed-card-button'
+import { ShareButton } from '@/components/share-button'
 import { ssrGraphQL } from '@/lib/graphql-ssr'
 import { formatNumber, languageColor } from '@/lib/utils'
 import { BrandLogo } from '@/components/brand-logo'
@@ -85,17 +86,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       : ''
     const description = `${streakBlurb}${formatNumber(profile.totalCommits)} commits · ${profile.activeDays} active days in the last year`
     const title = `${profile.displayName} on reflog`
+    // og:image is handled by opengraph-image.tsx (Next.js native, 1200×627)
     return {
       title,
       description,
-      openGraph: {
-        title, description, type: 'profile',
-        ...(profile.avatarUrl ? { images: [{ url: profile.avatarUrl }] } : {}),
-      },
-      twitter: {
-        card: 'summary', title, description,
-        ...(profile.avatarUrl ? { images: [profile.avatarUrl] } : {}),
-      },
+      openGraph: { title, description, type: 'profile' },
+      twitter: { card: 'summary_large_image', title, description },
     }
   }
 
@@ -305,7 +301,8 @@ export default async function PublicProfilePage({ params }: PageProps) {
             <Calendar className="h-3 w-3" />
             {joinedLabel(profile.joinedAt)}
           </p>
-          <div className="mt-3 flex justify-center sm:justify-start">
+          <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+            <ShareButton username={profile.username} displayName={profile.displayName} totalCommits={profile.totalCommits} currentStreak={profile.currentStreak} activeDays={profile.activeDays} />
             <EmbedCardButton username={profile.username} />
           </div>
         </div>

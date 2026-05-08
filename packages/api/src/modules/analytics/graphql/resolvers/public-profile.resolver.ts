@@ -93,11 +93,14 @@ export class PublicProfileResolver {
     const out: PublicProfileType = {
       username: data.username,
       displayName: data.displayName,
-      joinedAt: data.joinedAt,
+      joinedAt: data.joinedAt instanceof Date ? data.joinedAt : new Date(data.joinedAt as unknown as string),
       activeDays: data.activeDays,
       totalCommits: data.totalCommits,
       topLanguages: data.topLanguages,
-      recentActivity: data.recentActivity,
+      recentActivity: data.recentActivity.map((a) => ({
+        ...a,
+        date: a.date instanceof Date ? a.date : new Date(a.date as unknown as string),
+      })),
       ...(data.avatarUrl ? { avatarUrl: data.avatarUrl } : {}),
       ...(data.currentStreak !== null ? { currentStreak: data.currentStreak } : {}),
       ...(data.longestStreak !== null ? { longestStreak: data.longestStreak } : {}),

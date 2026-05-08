@@ -68,7 +68,7 @@ export function MobileDrawer() {
       {/* Drawer */}
       <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-surface md:hidden">
         <div className="flex h-14 items-center justify-between border-b border-border px-4">
-          <div className="flex items-center gap-2.5">
+          <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
             <div
               className="flex shrink-0 items-center justify-center"
               style={{ width: 36, height: 36, background: '#060a0d', border: '1px solid #06b6d4', borderRadius: 7 }}
@@ -80,7 +80,7 @@ export function MobileDrawer() {
             <span className="text-sm font-extrabold tracking-tight" style={{ fontWeight: 800 }}>
               <span className="text-slate-100">ref</span><span className="text-cyan-400">log</span>
             </span>
-          </div>
+          </Link>
           <button
             onClick={() => setMobileMenuOpen(false)}
             className="cursor-pointer rounded-md p-1 text-slate-500 hover:text-slate-200"
@@ -107,7 +107,10 @@ export function Sidebar() {
       )}
     >
       {/* Logo */}
-      <div className={cn('flex h-14 items-center border-b border-border px-3', sidebarOpen ? 'gap-2.5' : 'justify-center')}>
+      <Link
+        href="/dashboard"
+        className={cn('flex h-14 items-center border-b border-border px-3 transition-opacity hover:opacity-80', sidebarOpen ? 'gap-2.5' : 'justify-center')}
+      >
         <div
           className="flex shrink-0 items-center justify-center"
           style={{ width: 36, height: 36, background: '#060a0d', border: '1px solid #06b6d4', borderRadius: 7 }}
@@ -121,7 +124,7 @@ export function Sidebar() {
             <span className="text-slate-100">ref</span><span className="text-cyan-400">log</span>
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 p-2 pt-3">
