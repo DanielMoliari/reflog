@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, Circle, AlertCircle, RefreshCw, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { CheckCircle2, Circle, AlertCircle, RefreshCw, X, ChevronUp, ChevronDown } from 'lucide-react'
 import { useApolloClient, useMutation, useQuery } from '@apollo/client/react'
 import { REPOSITORIES_QUERY } from '@/graphql/queries'
 import { SYNC_REPOSITORY } from '@/graphql/mutations'
@@ -27,22 +27,34 @@ const STATUS_ORDER: Record<RepoSyncStatus, number> = {
   error:   3,
 }
 
-function StatusIcon({ status }: { status: RepoSyncStatus }) {
-  if (status === 'done')    return <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
-  if (status === 'error')   return <AlertCircle  className="h-3.5 w-3.5 shrink-0 text-danger" />
-  if (status === 'syncing') return <RefreshCw    className="h-3.5 w-3.5 shrink-0 animate-spin text-accent" />
-  return <Circle className="h-3.5 w-3.5 shrink-0 text-slate-600" />
-}
+function RepoChip({ row }: { row: RepoRow }) {
+  const shortName = row.fullName.split('/')[1] ?? row.fullName
 
-function StatusLabel({ status }: { status: RepoSyncStatus }) {
-  const map: Record<RepoSyncStatus, { text: string; cls: string }> = {
-    queued:  { text: 'queued',   cls: 'text-slate-500' },
-    syncing: { text: 'syncing…', cls: 'text-accent' },
-    done:    { text: 'done',     cls: 'text-success' },
-    error:   { text: 'error',    cls: 'text-danger' },
+  if (row.status === 'done') {
+    return (
+      <div className="flex items-center gap-1.5 rounded-md border border-success/20 bg-success/5 px-2 py-1 text-[11px] text-success">
+        <CheckCircle2 className="h-3 w-3 shrink-0" />
+        <span className="max-w-[100px] truncate">{shortName}</span>
+      </div>
+    )
   }
-  const { text, cls } = map[status]
-  return <span className={`text-xs tabular ${cls}`}>{text}</span>
+  if (row.status === 'error') {
+    return (
+      <div className="flex items-center gap-1.5 rounded-md border border-danger/20 bg-danger/5 px-2 py-1 text-[11px] text-danger">
+        <AlertCircle className="h-3 w-3 shrink-0" />
+        <span className="max-w-[100px] truncate">{shortName}</span>
+      </div>
+    )
+  }
+  if (row.status === 'syncing') {
+    return (
+      <div className="flex items-center gap-1.5 rounded-md border border-accent/20 bg-accent/5 px-2 py-1 text-[11px] text-accent">
+        <RefreshCw className="h-3 w-3 shrink-0 animate-spin" />
+        <span className="max-w-[100px] truncate">{shortName}</span>
+      </div>
+    )
+  }
+  return null
 }
 
 export function SyncPanel({ open, onClose }: SyncPanelProps) {
@@ -54,34 +66,31 @@ export function SyncPanel({ open, onClose }: SyncPanelProps) {
   const [syncRepository] = useMutation(SYNC_REPOSITORY)
 
   const [rows, setRows] = useState<RepoRow[]>([])
-  const [collapsed, setCollapsed] = useState(false)
-  const pollRef       = useRef<ReturnType<typeof setInterval> | null>(null)
-  const startedRef    = useRef(false)
-  const sessionStart  = useRef<number>(0)
-  // IDs observed in SYNCING during this session — primary signal for completion.
+  const [expanded, setExpanded] = useState(false)
+  const pollRef        = useRef<ReturnType<typeof setInterval> | null>(null)
+  const startedRef     = useRef(false)
+  const sessionStart   = useRef<number>(0)
   const seenSyncingRef = useRef<Set<string>>(new Set())
 
-  // Initialise rows when panel opens
   useEffect(() => {
     if (!open) return
     const repos = (data?.repositories ?? []).filter((r) => r.isTracked)
     seenSyncingRef.current = new Set()
     sessionStart.current = Date.now()
     startedRef.current = false
-    setCollapsed(false)
+    setExpanded(false)
     setRows(repos.map((r) => ({
       id: r.id,
       fullName: r.fullName,
       status: r.syncState === 'SYNCING' ? 'syncing' : 'queued',
     })))
-  }, [open]) // intentionally omitting data — only re-init when panel opens
+  }, [open])
 
-  // Kick off once rows are ready
   useEffect(() => {
     if (!open || rows.length === 0 || startedRef.current) return
     startedRef.current = true
     void triggerAll()
-  }, [open, rows.length]) // intentionally omitting triggerAll — stable ref pattern
+  }, [open, rows.length])
 
   async function triggerAll() {
     const repos = ((await refetch()).data?.repositories ?? []).filter((r) => r.isTracked)
@@ -95,30 +104,17 @@ export function SyncPanel({ open, onClose }: SyncPanelProps) {
         const next = prev.map((row) => {
           const live = fresh.find((r) => r.id === row.id)
           if (!live) return row
-
           if (live.syncState === 'SYNCING') {
             seenSyncingRef.current.add(row.id)
             return { ...row, status: 'syncing' as const }
           }
-
-          if (live.syncState === 'ERROR') {
-            return { ...row, status: 'error' as const }
-          }
-
-          // IDLE: primary signal — seen syncing during this session
-          if (seenSyncingRef.current.has(row.id)) {
-            return { ...row, status: 'done' as const }
-          }
-
-          // Fallback for fast repos that complete between polls:
-          // if lastSyncedAt was updated after we opened the panel, it's done
+          if (live.syncState === 'ERROR') return { ...row, status: 'error' as const }
+          if (seenSyncingRef.current.has(row.id)) return { ...row, status: 'done' as const }
           if (live.lastSyncedAt && new Date(live.lastSyncedAt).getTime() >= sessionStart.current) {
             return { ...row, status: 'done' as const }
           }
-
           return row
         })
-
         return [...next].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status])
       })
 
@@ -137,9 +133,6 @@ export function SyncPanel({ open, onClose }: SyncPanelProps) {
           [...prev.map((r) => r.status === 'queued' ? { ...r, status: 'done' as const } : r)]
             .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status])
         )
-        // Wipe the entire Apollo cache and re-fetch active queries from the network.
-        // refetchQueries only re-runs known active queries; resetStore also clears
-        // any stale cache entries that may have built up with old date variables.
         await apollo.resetStore()
       }
     }, 1500)
@@ -152,80 +145,114 @@ export function SyncPanel({ open, onClose }: SyncPanelProps) {
   if (!open) return null
 
   const done     = rows.filter((r) => r.status === 'done').length
+  const errors   = rows.filter((r) => r.status === 'error').length
   const total    = rows.length
   const allDone  = total > 0 && rows.every((r) => r.status === 'done' || r.status === 'error')
   const progress = total > 0 ? Math.round((done / total) * 100) : 0
 
+  // chips: active (syncing) first, then done, skip queued in bar
+  const activeChips = rows.filter((r) => r.status === 'syncing' || r.status === 'error')
+  const doneChips   = rows.filter((r) => r.status === 'done')
+  const visibleChips = [...activeChips, ...doneChips].slice(0, 4)
+  const hiddenCount  = rows.filter((r) => r.status === 'queued').length + Math.max(0, activeChips.length + doneChips.length - 4)
+
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-border-2 bg-surface shadow-2xl shadow-black/60 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border">
-        <div className="flex items-center gap-2 min-w-0">
-          <RefreshCw
-            className={[
-              'h-3.5 w-3.5 shrink-0',
-              allDone ? 'text-success' : 'animate-spin text-accent',
-            ].join(' ')}
-          />
-          <span className="text-sm font-medium text-slate-200 truncate">
-            {allDone ? 'All repositories synced' : 'Syncing repositories'}
+    <div className="border-t border-border bg-surface">
+      {/* Progress bar — top of the bar */}
+      <div className="h-px w-full bg-surface-2">
+        <div
+          className="h-full transition-all duration-700"
+          style={{
+            width: `${progress}%`,
+            backgroundColor: allDone
+              ? (errors > 0 ? 'var(--color-danger)' : 'var(--color-success)')
+              : 'var(--color-accent)',
+          }}
+        />
+      </div>
+
+      {/* Main bar row */}
+      <div className="flex items-center gap-3 px-5 py-2.5">
+
+        {/* Left: status icon + label + count */}
+        <div className="flex items-center gap-2 shrink-0">
+          {allDone ? (
+            errors > 0
+              ? <AlertCircle className="h-3.5 w-3.5 shrink-0 text-danger" />
+              : <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-accent" />
+          )}
+          <span className={`text-xs font-semibold tabular shrink-0 ${allDone ? (errors > 0 ? 'text-danger' : 'text-success') : 'text-accent'}`}>
+            {allDone
+              ? (errors > 0 ? `${errors} error${errors > 1 ? 's' : ''}` : 'All synced')
+              : `${done}/${total}`}
           </span>
         </div>
+
+        {/* Divider */}
+        <div className="h-4 w-px bg-border-2 shrink-0" />
+
+        {/* Repo chips — active + done */}
+        <div className="flex flex-1 items-center gap-1.5 overflow-hidden min-w-0">
+          {visibleChips.map((row) => (
+            <RepoChip key={row.id} row={row} />
+          ))}
+          {hiddenCount > 0 && (
+            <span className="shrink-0 text-[11px] text-slate-600">+{hiddenCount} queued</span>
+          )}
+          {visibleChips.length === 0 && !allDone && (
+            <span className="text-[11px] text-slate-600">Starting…</span>
+          )}
+        </div>
+
+        {/* Right: expand + close */}
         <div className="flex items-center gap-1 shrink-0">
           <button
-            onClick={() => setCollapsed((c) => !c)}
-            className="rounded p-1 text-slate-500 hover:bg-surface-2 hover:text-slate-300 transition-colors cursor-pointer"
+            onClick={() => setExpanded((e) => !e)}
+            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-slate-600 transition-colors hover:bg-surface-2 hover:text-slate-300"
+            title={expanded ? 'Collapse' : 'Show all repos'}
           >
-            {collapsed ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
           </button>
           <button
             onClick={onClose}
-            className="rounded p-1 text-slate-500 hover:bg-surface-2 hover:text-slate-300 transition-colors cursor-pointer"
+            className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-slate-600 transition-colors hover:bg-surface-2 hover:text-slate-300"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-0.5 w-full bg-surface-2">
-        <div
-          className="h-full transition-all duration-700"
-          style={{
-            width: `${progress}%`,
-            backgroundColor: allDone ? 'var(--color-success)' : 'var(--color-accent)',
-          }}
-        />
-      </div>
-
-      {!collapsed && (
-        <>
-          {/* Summary */}
-          <div className="px-4 py-2 flex items-center justify-between">
-            <span className="text-xs text-slate-500">
-              {allDone
-                ? `${total} repositories up to date`
-                : `${done} of ${total} complete`}
-            </span>
-            <span className="text-xs font-semibold tabular text-slate-400">{progress}%</span>
-          </div>
-
-          {/* Repo list */}
-          <ul className="max-h-64 overflow-y-auto px-2 pb-2">
-            {rows.map((row) => (
+      {/* Expanded repo list */}
+      {expanded && (
+        <ul className="max-h-52 overflow-y-auto border-t border-border px-4 pb-3 pt-2">
+          {rows.map((row) => {
+            const shortName = row.fullName.split('/')[1] ?? row.fullName
+            return (
               <li
                 key={row.id}
-                className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-2"
+                className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-surface-2"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <StatusIcon status={row.status} />
-                  <span className="text-xs text-slate-300 truncate">{row.fullName}</span>
+                  {row.status === 'done'    && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />}
+                  {row.status === 'error'   && <AlertCircle  className="h-3.5 w-3.5 shrink-0 text-danger" />}
+                  {row.status === 'syncing' && <RefreshCw    className="h-3.5 w-3.5 shrink-0 animate-spin text-accent" />}
+                  {row.status === 'queued'  && <Circle       className="h-3.5 w-3.5 shrink-0 text-slate-700" />}
+                  <span className="truncate text-xs text-slate-400">{shortName}</span>
                 </div>
-                <StatusLabel status={row.status} />
+                <span className={`shrink-0 text-[11px] tabular ${
+                  row.status === 'done'    ? 'text-success' :
+                  row.status === 'error'   ? 'text-danger'  :
+                  row.status === 'syncing' ? 'text-accent'  :
+                  'text-slate-600'
+                }`}>
+                  {row.status === 'done' ? 'done' : row.status === 'error' ? 'error' : row.status === 'syncing' ? 'syncing…' : 'queued'}
+                </span>
               </li>
-            ))}
-          </ul>
-        </>
+            )
+          })}
+        </ul>
       )}
     </div>
   )
