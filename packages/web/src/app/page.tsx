@@ -5,13 +5,13 @@ import {
   BarChart3,
   GitPullRequest,
   ArrowRight,
-  Check,
   TrendingUp,
   Globe,
   Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/brand-logo'
+import { PricingSection } from '@/components/pricing-section'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:17642'
 
@@ -48,54 +48,6 @@ const FEATURES = [
   },
 ]
 
-const PRICING = [
-  {
-    plan: 'Free',
-    price: '$0',
-    sub: 'No credit card required',
-    features: [
-      { label: '5 tracked repositories', pro: false },
-      { label: '30-day history', pro: false },
-      { label: 'Weekly digest email', pro: false },
-      { label: 'Public profile & card', pro: false },
-      { label: 'Unlimited repositories', pro: true },
-      { label: 'Full commit history', pro: true },
-      { label: 'Real-time sync', pro: true },
-      { label: 'Advanced analytics', pro: true },
-      { label: 'API access', pro: true },
-      { label: 'Priority support', pro: true },
-    ],
-    highlight: false,
-  },
-  {
-    plan: 'Pro',
-    price: '$8',
-    period: '/mo',
-    sub: 'Everything, unlocked',
-    features: [
-      { label: 'Unlimited repositories', pro: true },
-      { label: 'Full commit history', pro: true },
-      { label: 'Real-time sync', pro: true },
-      { label: 'Advanced analytics', pro: true },
-      { label: 'API access', pro: true },
-      { label: 'Priority support', pro: true },
-      { label: 'Weekly digest email', pro: true },
-      { label: 'Public profile & card', pro: true },
-    ],
-    highlight: true,
-  },
-]
-
-const COMPARE_ROWS = [
-  { label: 'Repositories tracked',   free: '5',      pro: 'Unlimited' },
-  { label: 'Commit history',         free: '30 days', pro: 'All time'  },
-  { label: 'Real-time sync',         free: false,    pro: true         },
-  { label: 'Advanced analytics',     free: false,    pro: true         },
-  { label: 'API access',             free: false,    pro: true         },
-  { label: 'Public profile & card',  free: true,     pro: true         },
-  { label: 'Weekly digest email',    free: true,     pro: true         },
-  { label: 'Priority support',       free: false,    pro: true         },
-]
 
 const STATS = [
   { value: '50k+', label: 'Commits tracked' },
@@ -371,113 +323,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="px-6 py-28">
-        <div className="mx-auto max-w-3xl">
-          <div className="mb-16 text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-cyan-400">Pricing</p>
-            <h2 className="text-4xl font-bold tracking-tight">Simple, transparent pricing</h2>
-            <p className="mt-4 text-slate-500">Start free. Upgrade when you need more.</p>
-          </div>
-
-          {/* Cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-stretch">
-            {PRICING.map(({ plan, price, period, sub, highlight }) => (
-              <div
-                key={plan}
-                className={`relative flex flex-col rounded-2xl border p-7 ${
-                  highlight
-                    ? 'border-cyan-500/40 bg-gradient-to-b from-cyan-500/10 to-bg'
-                    : 'border-border bg-surface'
-                }`}
-              >
-                {highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-cyan-500 px-3 py-0.5 text-[11px] font-bold text-black tracking-wide">
-                    MOST POPULAR
-                  </div>
-                )}
-                <div className="mb-5">
-                  <h3 className="text-base font-bold text-slate-300">{plan}</h3>
-                  <div className="mt-1 flex items-baseline gap-1">
-                    <span className="tabular text-4xl font-black text-slate-100">{price}</span>
-                    {period && <span className="text-slate-500">{period}</span>}
-                  </div>
-                  <p className="mt-1 text-xs text-slate-600">{sub}</p>
-                </div>
-
-                {/* Key differentiators per plan */}
-                {highlight ? (
-                  <ul className="mb-6 space-y-2.5">
-                    {['Unlimited repositories', 'Full commit history', 'Real-time sync', 'Advanced analytics', 'API access', 'Priority support', 'Public profile & card', 'Weekly digest email'].map((f) => (
-                      <li key={f} className="flex items-center gap-2.5 text-sm text-slate-300">
-                        <Check className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <ul className="mb-6 space-y-2.5">
-                    {['5 tracked repositories', '30-day history', 'Public profile & card', 'Weekly digest email'].map((f) => (
-                      <li key={f} className="flex items-center gap-2.5 text-sm text-slate-400">
-                        <Check className="h-3.5 w-3.5 shrink-0 text-slate-600" />
-                        {f}
-                      </li>
-                    ))}
-                    {['Real-time sync', 'Advanced analytics', 'API access', 'Priority support'].map((f) => (
-                      <li key={f} className="flex items-center gap-2.5 text-sm text-slate-600 line-through decoration-slate-700">
-                        <span className="h-3.5 w-3.5 shrink-0 flex items-center justify-center text-slate-700">—</span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <Button asChild variant={highlight ? 'default' : 'outline'} className="mt-auto w-full">
-                  <a href={`${API_URL}/api/v1/auth/github`}>Get started</a>
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          {/* Comparison table */}
-          <div className="mt-10 overflow-hidden rounded-xl border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-surface-2">
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-500">Feature</th>
-                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-widest text-slate-500">Free</th>
-                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-widest text-cyan-400">Pro</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARE_ROWS.map(({ label, free, pro }, i) => (
-                  <tr key={label} className={`border-b border-border last:border-0 ${i % 2 === 0 ? 'bg-surface' : 'bg-surface-2/50'}`}>
-                    <td className="px-5 py-3 text-slate-400">{label}</td>
-                    <td className="px-5 py-3 text-center">
-                      {typeof free === 'boolean' ? (
-                        free
-                          ? <Check className="mx-auto h-4 w-4 text-slate-500" />
-                          : <span className="text-slate-700">—</span>
-                      ) : (
-                        <span className="text-slate-500">{free}</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-center">
-                      {typeof pro === 'boolean' ? (
-                        pro
-                          ? <Check className="mx-auto h-4 w-4 text-cyan-400" />
-                          : <span className="text-slate-700">—</span>
-                      ) : (
-                        <span className="font-medium text-cyan-400">{pro}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      <PricingSection />
 
       {/* Final CTA */}
       <section className="px-6 py-24">
