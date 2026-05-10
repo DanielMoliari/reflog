@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Flame, GitBranch, Calendar, Code2, Trophy, Users, Star, MapPin } from 'lucide-react'
+import { Flame, GitBranch, Calendar, Code2, Trophy, Users, Star, MapPin, TrendingUp } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card } from '@/components/ui/card'
 import { Heatmap } from '@/components/heatmap'
@@ -20,12 +20,21 @@ const PROFILE_QUERY = `
       joinedAt
       activeDays
       totalCommits
+      totalAdditions
+      totalPrs
+      avgCommitsPerActiveDay
       currentStreak
       longestStreak
       topLanguages { name bytes percent }
       recentActivity { date count level }
       trackedRepos { fullName language }
     }
+  }
+`
+
+const PLATFORM_STATS_QUERY = `
+  query PlatformStats {
+    platformStats { userCount commitCount }
   }
 `
 
@@ -125,6 +134,34 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 function joinedLabel(iso: string): string {
   const d = new Date(iso)
   return `On reflog since ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+}
+
+function activeDaysLabel(activeDays: number): string | null {
+  if (activeDays >= 300) return 'Top 1% most active'
+  if (activeDays >= 200) return 'Top 5% most active'
+  if (activeDays >= 100) return 'Top 15% most active'
+  if (activeDays >= 50) return 'Top 30% most active'
+  return null
+}
+
+function linesWrittenLabel(totalAdditions: number): string | null {
+  if (totalAdditions >= 500_000) return 'Top 5% by lines written'
+  if (totalAdditions >= 200_000) return 'Top 15% by lines written'
+  if (totalAdditions >= 50_000) return 'Top 30% by lines written'
+  return null
+}
+
+function prsLabel(totalPrs: number): string | null {
+  if (totalPrs >= 500) return 'Top 5% by PRs opened'
+  if (totalPrs >= 200) return 'Top 15% by PRs opened'
+  if (totalPrs >= 50) return 'Top 30% by PRs opened'
+  return null
+}
+
+function commitIntensityLabel(avgCommitsPerActiveDay: number): string | null {
+  if (avgCommitsPerActiveDay >= 10) return 'Top 10% commit intensity'
+  if (avgCommitsPerActiveDay >= 5) return 'Top 25% commit intensity'
+  return null
 }
 
 function NotFoundState({ username }: { username: string }) {
@@ -270,7 +307,15 @@ function GitHubProfilePage({ gh }: { gh: GithubProfile }) {
 
 export default async function PublicProfilePage({ params }: PageProps) {
   const { username } = await params
-  const profile = await fetchDevPulseProfile(username)
+
+  const [profile, platformStats] = await Promise.all([
+    fetchDevPulseProfile(username),
+    ssrGraphQL<{ platformStats: { userCount: number; commitCount: number } }>(
+      PLATFORM_STATS_QUERY,
+      {},
+      { revalidate: 3600 },
+    ).then((d) => d?.platformStats ?? null),
+  ])
 
   if (!profile) {
     const gh = await fetchGitHubProfile(username)
@@ -286,6 +331,17 @@ export default async function PublicProfilePage({ params }: PageProps) {
     .slice(0, 2)
 
   const showStreak = profile.currentStreak !== null && profile.longestStreak !== null
+  const enoughUsers = (platformStats?.userCount ?? 0) >= 10
+  const rankLabel = enoughUsers ? activeDaysLabel(profile.activeDays) : null
+  const linesLabel = enoughUsers ? linesWrittenLabel(profile.totalAdditions) : null
+  const prsRankLabel = enoughUsers ? prsLabel(profile.totalPrs) : null
+  const intensityLabel = enoughUsers ? commitIntensityLabel(profile.avgCommitsPerActiveDay) : null
+  // Only show commit share when there are enough users for it to be meaningful,
+  // and cap at 100% to guard against data inconsistencies (e.g. untracked repo metrics).
+  const commitSharePct =
+    platformStats && platformStats.commitCount > 0 && platformStats.userCount >= 10
+      ? Math.min((profile.totalCommits / platformStats.commitCount) * 100, 100).toFixed(1)
+      : null
 
   return (
     <div className="space-y-8">
@@ -348,6 +404,41 @@ export default async function PublicProfilePage({ params }: PageProps) {
           <p className="mt-1 text-xs text-slate-600">Last 12 months</p>
         </Card>
       </section>
+
+      {/* Ranking context badges */}
+      {(rankLabel ?? linesLabel ?? prsRankLabel ?? intensityLabel ?? commitSharePct) && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {rankLabel && (
+            <div className="flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/8 px-3 py-1 text-xs font-medium text-accent w-fit">
+              <TrendingUp className="h-3 w-3" />
+              {rankLabel} on reflog
+            </div>
+          )}
+          {linesLabel && (
+            <div className="flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/8 px-3 py-1 text-xs font-medium text-accent w-fit">
+              <TrendingUp className="h-3 w-3" />
+              {linesLabel} on reflog
+            </div>
+          )}
+          {prsRankLabel && (
+            <div className="flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/8 px-3 py-1 text-xs font-medium text-accent w-fit">
+              <TrendingUp className="h-3 w-3" />
+              {prsRankLabel} on reflog
+            </div>
+          )}
+          {intensityLabel && (
+            <div className="flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/8 px-3 py-1 text-xs font-medium text-accent w-fit">
+              <TrendingUp className="h-3 w-3" />
+              {intensityLabel} on reflog
+            </div>
+          )}
+          {commitSharePct && (
+            <div className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-surface-2 px-3 py-1 text-xs font-medium text-slate-400 w-fit">
+              {commitSharePct}% of all tracked commits
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Heatmap */}
       <section>

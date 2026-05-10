@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { forwardRef, Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
@@ -9,6 +9,7 @@ import { AuthController } from './infrastructure/http/auth.controller'
 import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.repository'
 import { USER_REPOSITORY } from './ports/user.repository.port'
 import { UserResolver } from './graphql/resolvers/user.resolver'
+import { NotificationsModule } from '../notifications/notifications.module'
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { UserResolver } from './graphql/resolvers/user.resolver'
         signOptions: { expiresIn: config.get('JWT_EXPIRES_IN', '7d') as `${number}${'s'|'m'|'h'|'d'}` },
       }),
     }),
+    forwardRef(() => NotificationsModule),
   ],
   controllers: [AuthController],
   providers: [

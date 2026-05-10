@@ -1,5 +1,5 @@
 import { BullModule } from '@nestjs/bullmq'
-import { Module } from '@nestjs/common'
+import { forwardRef, Module } from '@nestjs/common'
 import { QUEUE_SYNC_REPOSITORY } from '../../infrastructure/queue/queue.module'
 import { IdentityModule } from '../identity/identity.module'
 import { GitHubApiAdapter } from './infrastructure/github/github-api.adapter'
@@ -18,7 +18,7 @@ import { GitHubLookupService } from './application/services/github-lookup.servic
 @Module({
   imports: [
     BullModule.registerQueue({ name: QUEUE_SYNC_REPOSITORY }),
-    IdentityModule,
+    forwardRef(() => IdentityModule),
   ],
   controllers: [CardController],
   providers: [

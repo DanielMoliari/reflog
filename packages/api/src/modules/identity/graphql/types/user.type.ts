@@ -26,6 +26,9 @@ export class UserType {
   @Field()
   githubId: string
 
+  @Field({ nullable: true, description: 'GitHub login handle, e.g. "DanielMoliari"' })
+  githubUsername?: string
+
   @Field({ defaultValue: true })
   notificationsEnabled: boolean
 

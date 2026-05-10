@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { gql } from '@apollo/client'
 import { useQuery } from '@apollo/client/react'
 import { AuthRedirect } from '@/components/auth-redirect'
 import {
@@ -17,8 +18,141 @@ import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/brand-logo'
 import { PricingSection } from '@/components/pricing-section'
 import { PLATFORM_STATS_QUERY } from '@/graphql/queries'
+import { languageColor } from '@/lib/utils'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:17642'
+
+const PUBLIC_PROFILE_LANDING_QUERY = gql`
+  query PublicProfileLanding($username: String!) {
+    publicProfile(username: $username) {
+      username
+      displayName
+      avatarUrl
+      totalCommits
+      currentStreak
+      topLanguages { name percent }
+      trackedRepos { fullName }
+    }
+  }
+`
+
+interface LandingProfileLanguage {
+  name: string
+  percent: number
+}
+
+interface LandingProfile {
+  username: string
+  displayName: string
+  avatarUrl: string | null
+  totalCommits: number
+  currentStreak: number | null
+  topLanguages: LandingProfileLanguage[]
+  trackedRepos: { fullName: string }[] | null
+}
+
+function formatCommits(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return String(n)
+}
+
+function MiniProfileCard() {
+  const { data } = useQuery<{ publicProfile: LandingProfile | null }>(
+    PUBLIC_PROFILE_LANDING_QUERY,
+    { variables: { username: 'danielmoliari' }, errorPolicy: 'ignore' },
+  )
+
+  const profile = data?.publicProfile
+
+  if (!profile) {
+    // Static fallback while loading or if unavailable
+    return (
+      <div className="w-full max-w-xs rounded-xl border border-white/8 bg-[#111] p-5 shadow-2xl">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600" />
+          <div>
+            <p className="text-sm font-semibold text-slate-100">Daniel Moliari</p>
+            <p className="text-xs text-slate-500">@danielmoliari</p>
+          </div>
+        </div>
+        <div className="mb-3 grid grid-cols-3 gap-2">
+          {[
+            { v: '3.9k', l: 'Commits' },
+            { v: '14', l: 'Streak' },
+            { v: '62', l: 'Repos' },
+          ].map(({ v, l }) => (
+            <div key={l} className="rounded-lg bg-white/4 p-2 text-center">
+              <p className="text-sm font-bold text-cyan-400">{v}</p>
+              <p className="text-[9px] text-slate-600">{l}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex h-1.5 overflow-hidden rounded-full">
+          {[
+            { w: '45%', c: '#06b6d4' },
+            { w: '25%', c: '#a78bfa' },
+            { w: '20%', c: '#34d399' },
+            { w: '10%', c: '#f59e0b' },
+          ].map((s, i) => (
+            <div key={i} style={{ width: s.w, backgroundColor: s.c }} />
+          ))}
+        </div>
+        <p className="mt-1.5 text-[9px] text-slate-600">TypeScript · Python · Go · Rust</p>
+      </div>
+    )
+  }
+
+  const langs = profile.topLanguages.slice(0, 4)
+  const repoCount = profile.trackedRepos?.length ?? 0
+
+  return (
+    <div className="w-full max-w-xs rounded-xl border border-white/8 bg-[#111] p-5 shadow-2xl">
+      <div className="mb-4 flex items-center gap-3">
+        {profile.avatarUrl ? (
+          <img
+            src={profile.avatarUrl}
+            alt={profile.displayName}
+            className="h-10 w-10 rounded-full object-cover"
+          />
+        ) : (
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600" />
+        )}
+        <div>
+          <p className="text-sm font-semibold text-slate-100">{profile.displayName}</p>
+          <p className="text-xs text-slate-500">@{profile.username}</p>
+        </div>
+      </div>
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        {[
+          { v: formatCommits(profile.totalCommits), l: 'Commits' },
+          { v: String(profile.currentStreak ?? 0), l: 'Streak' },
+          { v: String(repoCount), l: 'Repos' },
+        ].map(({ v, l }) => (
+          <div key={l} className="rounded-lg bg-white/4 p-2 text-center">
+            <p className="text-sm font-bold text-cyan-400">{v}</p>
+            <p className="text-[9px] text-slate-600">{l}</p>
+          </div>
+        ))}
+      </div>
+      {langs.length > 0 && (
+        <>
+          <div className="flex h-1.5 overflow-hidden rounded-full">
+            {langs.map((lang) => (
+              <div
+                key={lang.name}
+                style={{ width: `${lang.percent}%`, backgroundColor: languageColor(lang.name) }}
+              />
+            ))}
+          </div>
+          <p className="mt-1.5 text-[9px] text-slate-600">
+            {langs.map((l) => l.name).join(' · ')}
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
 
 const FEATURES = [
   {
@@ -300,39 +434,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="flex items-center justify-center border-t border-cyan-500/10 bg-black/20 p-8 lg:border-l lg:border-t-0">
-              {/* Mini profile card mockup */}
-              <div className="w-full max-w-xs rounded-xl border border-white/8 bg-[#111] p-5 shadow-2xl">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">Daniel Moliari</p>
-                    <p className="text-xs text-slate-500">@danielmoliari</p>
-                  </div>
-                </div>
-                <div className="mb-3 grid grid-cols-3 gap-2">
-                  {[
-                    { v: '3.9k', l: 'Commits' },
-                    { v: '14', l: 'Streak' },
-                    { v: '62', l: 'Repos' },
-                  ].map(({ v, l }) => (
-                    <div key={l} className="rounded-lg bg-white/4 p-2 text-center">
-                      <p className="text-sm font-bold text-cyan-400">{v}</p>
-                      <p className="text-[9px] text-slate-600">{l}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex h-1.5 overflow-hidden rounded-full">
-                  {[
-                    { w: '45%', c: '#06b6d4' },
-                    { w: '25%', c: '#a78bfa' },
-                    { w: '20%', c: '#34d399' },
-                    { w: '10%', c: '#f59e0b' },
-                  ].map((s, i) => (
-                    <div key={i} style={{ width: s.w, backgroundColor: s.c }} />
-                  ))}
-                </div>
-                <p className="mt-1.5 text-[9px] text-slate-600">TypeScript · Python · Go · Rust</p>
-              </div>
+              <MiniProfileCard />
             </div>
           </div>
         </div>

@@ -179,6 +179,9 @@ type PublicProfileType {
   activeDays: Int!
   avatarUrl: String
 
+  """Average commits per active day, all-time"""
+  avgCommitsPerActiveDay: Float!
+
   """Hidden when the user disables streak sharing"""
   currentStreak: Int
 
@@ -193,8 +196,14 @@ type PublicProfileType {
   """Top 5 languages by byte count"""
   topLanguages: [PublicLanguageType!]!
 
+  """Sum of line additions across the user lifetime on tracked repos"""
+  totalAdditions: Int!
+
   """Sum of commits across the user lifetime on tracked repos"""
   totalCommits: Int!
+
+  """Sum of PRs opened across the user lifetime on tracked repos"""
+  totalPrs: Int!
 
   """Tracked repos — null when the user disables repo sharing"""
   trackedRepos: [PublicRepoType!]
@@ -425,6 +434,11 @@ type UserType {
   createdAt: DateTime!
   email: String
   githubId: String!
+
+  """
+  GitHub login handle, e.g. "DanielMoliari"
+  """
+  githubUsername: String
   id: ID!
   name: String
   notificationsEnabled: Boolean!

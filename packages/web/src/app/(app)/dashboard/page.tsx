@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client/react'
 import { MetricCard } from '@/components/metric-card'
 import { Heatmap } from '@/components/heatmap'
@@ -18,6 +18,7 @@ import { getTrend } from '@/lib/utils'
 import { Coffee, Sparkles, Clock } from 'lucide-react'
 import { OnboardingPrompt } from '@/components/onboarding-prompt'
 import { StreakMilestoneCard } from '@/components/streak-milestone-card'
+import { StreakAtRiskBanner } from '@/components/streak-at-risk-banner'
 import { ME_QUERY } from '@/graphql/queries'
 import type { User } from '@/graphql/types'
 
@@ -63,7 +64,18 @@ function sum(rows: DailyMetrics[], key: keyof DailyMetrics): number {
 export default function DashboardPage() {
   const [range, setRange] = useState<Range>('week')
   const [heatmapMetric, setHeatmapMetric] = useState<HeatmapMetric>('COMMITS')
-  const [milestoneDismissed, setMilestoneDismissed] = useState<number | null>(null)
+  const [dismissedMilestones, setDismissedMilestones] = useState<number[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      return JSON.parse(localStorage.getItem('dismissed_milestones') ?? '[]') as number[]
+    } catch { return [] }
+  })
+
+  function dismissMilestone(m: number) {
+    const next = [...dismissedMilestones, m]
+    setDismissedMilestones(next)
+    localStorage.setItem('dismissed_milestones', JSON.stringify(next))
+  }
   const meta = RANGES.find((r) => r.value === range)!
 
   const vars = useMemo(() => rangeFor(range), [range])
@@ -73,23 +85,25 @@ export default function DashboardPage() {
     [],
   )
 
-  const { data: metricsData, loading: metricsLoading } = useQuery<{ metrics: DailyMetrics[] }>(
-    METRICS_QUERY, { variables: vars },
+  const { data: metricsData, loading: metricsLoading, refetch: refetchMetrics } = useQuery<{ metrics: DailyMetrics[] }>(
+    METRICS_QUERY, { variables: vars, fetchPolicy: 'cache-and-network' },
   )
-  const { data: prevData } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
+  const { data: prevData, refetch: refetchPrev } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
     variables: prevVars ?? vars,
     skip: prevVars === null,
+    fetchPolicy: 'cache-and-network',
   })
-  const { data: allTimeData } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
+  const { data: allTimeData, refetch: refetchAllTime } = useQuery<{ metrics: DailyMetrics[] }>(METRICS_QUERY, {
     variables: allTimeVars,
+    fetchPolicy: 'cache-and-network',
   })
-  const { data: streakData, loading: streakLoading } = useQuery<{ streak: StreakData }>(STREAK_QUERY)
-  const { data: heatmapData, loading: heatmapLoading } = useQuery<{ heatmap: HeatmapDay[] }>(
-    HEATMAP_QUERY, { variables: { metric: heatmapMetric } },
+  const { data: streakData, loading: streakLoading, refetch: refetchStreak } = useQuery<{ streak: StreakData }>(STREAK_QUERY, { fetchPolicy: 'cache-and-network' })
+  const { data: heatmapData, loading: heatmapLoading, refetch: refetchHeatmap } = useQuery<{ heatmap: HeatmapDay[] }>(
+    HEATMAP_QUERY, { variables: { metric: heatmapMetric }, fetchPolicy: 'cache-and-network' },
   )
-  const { data: insightsData, loading: insightsLoading } = useQuery<{ insights: Insights }>(INSIGHTS_QUERY)
+  const { data: insightsData, loading: insightsLoading, refetch: refetchInsights } = useQuery<{ insights: Insights }>(INSIGHTS_QUERY, { fetchPolicy: 'cache-and-network' })
 
-  const { data: reposData } = useQuery<{ repositories: Repository[] }>(REPOSITORIES_QUERY)
+  const { data: reposData, startPolling: startReposPolling, stopPolling: stopReposPolling } = useQuery<{ repositories: Repository[] }>(REPOSITORIES_QUERY)
   const { data: meData } = useQuery<{ me: User }>(ME_QUERY)
   const [syncRepository] = useMutation(SYNC_REPOSITORY)
 
@@ -103,6 +117,26 @@ export default function DashboardPage() {
       .forEach((r) => { void syncRepository({ variables: { id: r.id } }) })
   }, [reposData, syncRepository])
 
+  // Poll repos every 3s while any are syncing; refetch all charts when done
+  const isSyncing = (reposData?.repositories ?? []).some((r) => r.isTracked && r.syncState === 'SYNCING')
+  const prevIsSyncing = useRef(isSyncing)
+  useEffect(() => {
+    if (isSyncing) {
+      startReposPolling(3000)
+    } else {
+      stopReposPolling()
+      if (prevIsSyncing.current) {
+        void refetchMetrics()
+        void refetchPrev()
+        void refetchAllTime()
+        void refetchStreak()
+        void refetchHeatmap()
+        void refetchInsights()
+      }
+    }
+    prevIsSyncing.current = isSyncing
+  }, [isSyncing, startReposPolling, stopReposPolling, refetchMetrics, refetchPrev, refetchAllTime, refetchStreak, refetchHeatmap, refetchInsights])
+
   const metrics = metricsData?.metrics ?? []
   const prev = prevData?.metrics ?? []
   const streak = streakData?.streak
@@ -111,7 +145,7 @@ export default function DashboardPage() {
   const currentStreak = streak?.currentStreak ?? 0
   const MILESTONES = [7, 30, 60, 100, 200, 365]
   const hitMilestone = MILESTONES.find((m) => currentStreak === m) ?? null
-  const showMilestone = hitMilestone !== null && hitMilestone !== milestoneDismissed
+  const showMilestone = hitMilestone !== null && !dismissedMilestones.includes(hitMilestone)
 
   // For week view we want the latest 7 days only as the KPI window
   const kpiSlice = range === 'week' ? metrics.slice(-7) : metrics
@@ -137,9 +171,12 @@ export default function DashboardPage() {
         <StreakMilestoneCard
           streak={currentStreak}
           username={meData?.me?.username}
-          onDismiss={() => setMilestoneDismissed(hitMilestone)}
+          onDismiss={() => dismissMilestone(hitMilestone!)}
         />
       )}
+
+      {/* Streak at-risk warning — shown after 20:00 UTC when no commit today */}
+      <StreakAtRiskBanner streak={streak} loading={streakLoading} />
 
       {/* Range selector */}
       <div className="flex items-center justify-between gap-4 flex-wrap">

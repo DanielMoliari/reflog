@@ -27,6 +27,7 @@ export class IdentityService {
 
     const user = await this.userRepository.upsertFromGitHub({
       githubId: profile.githubId,
+      githubUsername: profile.username,
       name: profile.displayName,
       email: profile.email,
       avatarUrl: profile.avatarUrl,

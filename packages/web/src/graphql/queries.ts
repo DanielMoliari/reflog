@@ -5,6 +5,7 @@ export const ME_QUERY = gql`
     me {
       id
       githubId
+      githubUsername
       username
       name
       email
@@ -27,6 +28,9 @@ export const PUBLIC_PROFILE_QUERY = gql`
       joinedAt
       activeDays
       totalCommits
+      totalAdditions
+      totalPrs
+      avgCommitsPerActiveDay
       currentStreak
       longestStreak
       topLanguages { name bytes percent }

@@ -25,6 +25,7 @@ export class PrismaUserRepository implements IUserRepository {
 
   upsertFromGitHub(data: {
     githubId: string
+    githubUsername: string | null
     name: string | null
     email: string | null
     avatarUrl: string | null
@@ -34,12 +35,15 @@ export class PrismaUserRepository implements IUserRepository {
       where: { githubId: data.githubId },
       create: {
         githubId: data.githubId,
+        githubUsername: data.githubUsername,
+        username: data.githubUsername?.toLowerCase() ?? null,
         name: data.name,
         email: data.email,
         avatarUrl: data.avatarUrl,
         githubToken: data.encryptedToken,
       },
       update: {
+        githubUsername: data.githubUsername,
         name: data.name,
         email: data.email,
         avatarUrl: data.avatarUrl,

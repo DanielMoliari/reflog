@@ -1,4 +1,4 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql'
+import { Field, Float, Int, ObjectType } from '@nestjs/graphql'
 
 @ObjectType()
 export class PublicLanguageType {
@@ -37,6 +37,15 @@ export class PublicProfileType {
 
   @Field(() => Int, { description: 'Sum of commits across the user lifetime on tracked repos' })
   totalCommits: number
+
+  @Field(() => Int, { description: 'Sum of line additions across the user lifetime on tracked repos' })
+  totalAdditions: number
+
+  @Field(() => Int, { description: 'Sum of PRs opened across the user lifetime on tracked repos' })
+  totalPrs: number
+
+  @Field(() => Float, { description: 'Average commits per active day, all-time' })
+  avgCommitsPerActiveDay: number
 
   @Field(() => Int, { nullable: true, description: 'Hidden when the user disables streak sharing' })
   currentStreak?: number

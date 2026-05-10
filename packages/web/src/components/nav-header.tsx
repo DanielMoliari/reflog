@@ -78,7 +78,7 @@ interface NavHeaderProps {
 export function NavHeader({ onSyncOpen }: NavHeaderProps) {
   const pathname = usePathname()
   const { data, loading } = useQuery<{ me: UserType }>(ME_QUERY)
-  const { data: reposData } = useQuery<{ repositories: Repository[] }>(REPOSITORIES_QUERY)
+  const { data: reposData, startPolling, stopPolling } = useQuery<{ repositories: Repository[] }>(REPOSITORIES_QUERY)
   const title = getPageTitle(pathname, reposData?.repositories)
 
   const [syncedFlash, setSyncedFlash] = useState(false)
@@ -89,6 +89,15 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
   const tracked = (reposData?.repositories ?? []).filter((r) => r.isTracked)
   const isSyncing = tracked.some((r) => r.syncState === 'SYNCING')
   const hasError = !isSyncing && tracked.some((r) => r.syncState === 'ERROR')
+
+  // Poll every 3s while syncing so UI updates when workers finish
+  useEffect(() => {
+    if (isSyncing) {
+      startPolling(3000)
+    } else {
+      stopPolling()
+    }
+  }, [isSyncing, startPolling, stopPolling])
 
   // Flash "Synced" 2.5s when syncing transitions true → false
   useEffect(() => {
@@ -304,8 +313,10 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
               sideOffset={6}
             >
               <div className="border-b border-border px-4 py-3">
-                <p className="text-sm font-semibold text-slate-100">{user?.name ?? user?.username}</p>
-                <p className="mt-0.5 text-xs text-accent">@{user?.username}</p>
+                <p className="text-sm font-semibold text-slate-100">{user?.name ?? user?.githubUsername}</p>
+                {user?.githubUsername && (
+                  <p className="mt-0.5 text-xs text-accent">@{user.githubUsername}</p>
+                )}
               </div>
 
               <div className="p-1">

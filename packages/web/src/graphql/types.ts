@@ -5,6 +5,7 @@ export type HeatmapMetric = 'COMMITS' | 'LINES' | 'CHURN' | 'PRS'
 export interface User {
   id: string
   githubId: string
+  githubUsername: string | null
   username: string | null
   name: string | null
   email: string | null
@@ -35,6 +36,9 @@ export interface PublicProfile {
   joinedAt: string
   activeDays: number
   totalCommits: number
+  totalAdditions: number
+  totalPrs: number
+  avgCommitsPerActiveDay: number
   currentStreak: number | null
   longestStreak: number | null
   topLanguages: PublicProfileLanguage[]

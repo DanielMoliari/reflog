@@ -158,31 +158,45 @@ export class AnalyticsService {
     }))
   }
 
-  // Pull every repo the user owns, track them all, and queue sync jobs.
-  // GitHub is a record of years of work — language stats and "all-time" metrics
-  // are only meaningful when every repo contributes. BullMQ runs jobs in parallel
-  // and the user just sees a "syncing" indicator while it backfills.
+  // Pull every repo the user owns, track up to the plan limit (most-recently-pushed first),
+  // and queue sync jobs for tracked ones. The rest are imported as untracked so they appear
+  // in the list and can be manually tracked if the user upgrades.
   async importFromGitHub(userId: string): Promise<{ imported: number; tracked: number }> {
     const accessToken = await this.identityService.getDecryptedToken(userId)
     const ghRepos = await this.github.getUserRepositories(accessToken)
 
+    const user = await this.identityService.findById(userId)
+    const limit = user ? PLAN_LIMITS[user.plan].maxTrackedRepos : 5
+
+    // Sort by most recently pushed so the user's active repos get the tracked slots
+    const sorted = [...ghRepos].sort((a, b) => {
+      const at = a.pushedAt ? new Date(a.pushedAt).getTime() : 0
+      const bt = b.pushedAt ? new Date(b.pushedAt).getTime() : 0
+      return bt - at
+    })
+
     let imported = 0
-    for (const ghRepo of ghRepos) {
+    let tracked = 0
+    for (const ghRepo of sorted) {
+      const shouldTrack = tracked < limit
       const repo = await this.metricsRepo.upsertRepository({
         userId,
         githubRepoId: String(ghRepo.id),
         fullName: ghRepo.fullName,
         language: ghRepo.language,
         pushedAt: ghRepo.pushedAt,
-        isTracked: true,
+        isTracked: shouldTrack,
         isPrivate: ghRepo.private,
       })
-      await this.enqueueSyncJob(userId, repo.id, repo.fullName)
+      if (shouldTrack) {
+        await this.enqueueSyncJob(userId, repo.id, repo.fullName)
+        tracked++
+      }
       imported++
     }
 
-    this.logger.log(`Initial import for ${userId}: ${imported} repos imported and queued for sync`)
-    return { imported, tracked: imported }
+    this.logger.log(`Initial import for ${userId}: ${imported} repos imported, ${tracked} tracked (plan limit: ${limit})`)
+    return { imported, tracked }
   }
 
   async trackRepository(userId: string, githubRepoId: string): Promise<Repository> {
@@ -236,6 +250,7 @@ export class AnalyticsService {
     const repo = await this.metricsRepo.findRepositoryById(repoId)
     if (!repo) throw new NotFoundException('Repository not found')
     if (repo.userId !== userId) throw new ForbiddenException('Not your repository')
+    if (!repo.isTracked) throw new ForbiddenException('Repository is not tracked — track it first to sync')
     await this.enqueueSyncJob(userId, repo.id, repo.fullName)
     return { repositoryId: repo.id, queued: true }
   }

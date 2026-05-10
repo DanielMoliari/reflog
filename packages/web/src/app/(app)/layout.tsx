@@ -1,20 +1,38 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@apollo/client/react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Sidebar, MobileDrawer } from '@/components/sidebar'
 import { NavHeader } from '@/components/nav-header'
 import { SyncPanel } from '@/components/sync-panel'
 import { isAuthenticated } from '@/lib/auth'
+import { REPOSITORIES_QUERY } from '@/graphql/queries'
+import type { Repository } from '@/graphql/types'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [syncOpen, setSyncOpen] = useState(false)
+  const autoOpenedRef = useRef(false)
 
   useEffect(() => {
     if (!isAuthenticated()) router.replace('/')
   }, [router])
+
+  const { data: reposData } = useQuery<{ repositories: Repository[] }>(REPOSITORIES_QUERY)
+  const isSyncing = (reposData?.repositories ?? []).some((r) => r.isTracked && r.syncState === 'SYNCING')
+
+  // Auto-open the sync panel when background sync is detected (e.g. on first login import)
+  useEffect(() => {
+    if (isSyncing && !autoOpenedRef.current) {
+      autoOpenedRef.current = true
+      setSyncOpen(true)
+    }
+    if (!isSyncing) {
+      autoOpenedRef.current = false
+    }
+  }, [isSyncing])
 
   return (
     <TooltipProvider delayDuration={300}>

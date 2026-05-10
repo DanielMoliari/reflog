@@ -123,7 +123,7 @@ export default function SettingsPage() {
 
   const initials = user?.name
     ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : user?.username?.slice(0, 2).toUpperCase() ?? '?'
+    : (user?.githubUsername ?? user?.username)?.slice(0, 2).toUpperCase() ?? '?'
 
   const lastSyncedAt = repos
     .map((r) => r.lastSyncedAt)
@@ -158,8 +158,10 @@ export default function SettingsPage() {
               </>
             ) : (
               <>
-                <p className="font-medium text-slate-100">{user?.name ?? user?.username}</p>
-                <p className="text-xs text-slate-500">@{user?.username}</p>
+                <p className="font-medium text-slate-100">{user?.name ?? user?.githubUsername}</p>
+                {user?.githubUsername && (
+                  <p className="text-xs text-slate-500">@{user.githubUsername}</p>
+                )}
               </>
             )}
           </div>

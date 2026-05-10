@@ -57,6 +57,7 @@ export function RepoCard({ repo, maxCommits = 0, onToggleTrack, onSync, syncing 
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {repo.isTracked && (
           <Button
             variant="ghost"
             size="icon-sm"
@@ -66,6 +67,7 @@ export function RepoCard({ repo, maxCommits = 0, onToggleTrack, onSync, syncing 
           >
             <RefreshCw className={`h-3.5 w-3.5 ${syncing || repo.syncState === 'SYNCING' ? 'animate-spin' : ''}`} />
           </Button>
+          )}
           <Switch
             checked={repo.isTracked}
             onCheckedChange={(checked) => onToggleTrack(repo.id, checked)}

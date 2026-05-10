@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery, useMutation } from '@apollo/client/react'
-import { Search, Sparkles, Network, Layers, ExternalLink, ChevronDown } from 'lucide-react'
+import { Search, Sparkles, Network, Layers, ExternalLink, ChevronDown, GitFork } from 'lucide-react'
 import { RepoCard, RepoCardSkeleton } from '@/components/repo-card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ME_QUERY, REPOSITORIES_QUERY, TECH_GRAPH_QUERY } from '@/graphql/queries'
-import { TRACK_REPOSITORY, UNTRACK_REPOSITORY, SYNC_REPOSITORY } from '@/graphql/mutations'
+import { TRACK_REPOSITORY, UNTRACK_REPOSITORY, SYNC_REPOSITORY, IMPORT_GITHUB_REPOSITORIES } from '@/graphql/mutations'
 import type { Repository, User } from '@/graphql/types'
 import { PLAN_LIMITS } from '@/lib/plan-limits'
 import { languageColor } from '@/lib/utils'
@@ -53,6 +53,10 @@ export default function ReposPage() {
   })
   const [syncRepo, { loading: syncing }] = useMutation(SYNC_REPOSITORY)
   const [currentSyncId, setCurrentSyncId] = useState<string | null>(null)
+  const [importRepos, { loading: importing }] = useMutation<{ importFromGitHub: { imported: number; tracked: number } }>(
+    IMPORT_GITHUB_REPOSITORIES,
+    { refetchQueries: [REPOSITORIES_QUERY] },
+  )
 
   function handleToggle(id: string, tracked: boolean) {
     if (tracked) {
@@ -137,146 +141,174 @@ export default function ReposPage() {
 
       {activeTab === 'repos' && (
         <>
-          {/* Header row */}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <h2 className="text-base font-semibold text-slate-100">Repositories</h2>
-              {planLimit !== null ? (
-                <Badge variant={overLimit ? 'warning' : 'default'}>
-                  {tracked} / {planLimit} tracked
-                </Badge>
-              ) : (
-                <Badge variant="default">{tracked} tracked</Badge>
-              )}
-            </div>
-            {meData?.me?.plan === 'FREE' && (
-              <Button asChild variant="outline" size="sm">
-                <Link href="/settings#billing">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Upgrade to Pro
-                </Link>
-              </Button>
-            )}
-          </div>
-
-          {/* Plan-limit nudge */}
-          {overLimit && meData?.me?.plan === 'FREE' && (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-accent/20 bg-accent/5 p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-dim">
-                  <Sparkles className="h-4 w-4 text-accent" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-100">You&apos;ve hit the FREE plan cap</p>
-                  <p className="text-xs text-slate-500">
-                    Pro tracks up to {PLAN_LIMITS.PRO.maxTrackedRepos} repos with full history and real-time sync.
-                  </p>
-                </div>
-              </div>
-              <Button asChild size="sm">
-                <Link href="/settings#billing">Upgrade →</Link>
-              </Button>
-            </div>
-          )}
-
-          {/* Filters */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Search */}
-            <div className="relative flex-1 min-w-52">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
-              <Input
-                className="pl-8"
-                placeholder="Search repositories…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-            {/* Tracking filter */}
-            <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
-              {(['all', 'tracked', 'untracked'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors capitalize ${
-                    filter === f ? 'bg-surface-2 text-slate-100' : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-
-            {/* Language filter */}
-            {availableLangs.length > 0 && (
+          {/* Empty state — no repos at all (fresh user) */}
+          {!initialLoad && repos.length === 0 ? (
+            <div className="relative overflow-hidden rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/8 via-surface to-surface p-10 text-center">
+              <div className="pointer-events-none absolute left-1/2 top-0 h-40 w-80 -translate-x-1/2 rounded-full bg-cyan-500/8 blur-3xl" />
               <div className="relative">
-                <select
-                  value={langFilter}
-                  onChange={(e) => setLangFilter(e.target.value)}
-                  className="cursor-pointer appearance-none rounded-lg border border-border bg-surface px-3 py-1.5 pr-7 text-xs font-medium text-slate-400 transition-colors hover:border-border-2 hover:text-slate-200 focus:outline-none"
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/20 bg-accent/10">
+                  <GitFork className="h-7 w-7 text-accent" />
+                </div>
+                <h2 className="mb-2 text-base font-semibold text-slate-100">No repositories yet</h2>
+                <p className="mx-auto mb-6 max-w-sm text-sm leading-relaxed text-slate-500">
+                  reflog imports your GitHub repos automatically when you first sign in.
+                  If nothing appeared, click &ldquo;Import from GitHub&rdquo; below.
+                </p>
+                <Button
+                  size="sm"
+                  className="gap-2"
+                  disabled={importing}
+                  onClick={() => { void importRepos() }}
                 >
-                  <option value="all">All languages</option>
-                  {availableLangs.map((l) => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-600" />
+                  <GitFork className="h-3.5 w-3.5" />
+                  {importing ? 'Importing…' : 'Import from GitHub'}
+                </Button>
               </div>
-            )}
-
-            {/* Sort */}
-            <div className="relative">
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as typeof sort)}
-                className="cursor-pointer appearance-none rounded-lg border border-border bg-surface px-3 py-1.5 pr-7 text-xs font-medium text-slate-400 transition-colors hover:border-border-2 hover:text-slate-200 focus:outline-none"
-              >
-                <option value="activity">Recent activity</option>
-                <option value="commits">Most commits</option>
-                <option value="alpha">Alphabetical</option>
-                <option value="added">Recently added</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-600" />
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Header row */}
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-base font-semibold text-slate-100">Repositories</h2>
+                  {planLimit !== null ? (
+                    <Badge variant={overLimit ? 'warning' : 'default'}>
+                      {tracked} / {planLimit} tracked
+                    </Badge>
+                  ) : (
+                    <Badge variant="default">{tracked} tracked</Badge>
+                  )}
+                </div>
+                {meData?.me?.plan === 'FREE' && (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/settings#billing">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Upgrade to Pro
+                    </Link>
+                  </Button>
+                )}
+              </div>
 
-          {/* List */}
-          <div className="space-y-2">
-            {initialLoad
-              ? Array.from({ length: 5 }).map((_, i) => <RepoCardSkeleton key={i} />)
-              : filtered.length === 0
-                ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.03] text-slate-600">
-                      <Search className="h-4 w-4" />
+              {/* Plan-limit nudge */}
+              {overLimit && meData?.me?.plan === 'FREE' && (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-accent/20 bg-accent/5 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-dim">
+                      <Sparkles className="h-4 w-4 text-accent" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-400">No repositories found</p>
-                      <p className="mt-1 text-xs text-slate-600">
-                        {search ? `No results for "${search}"` : 'Try adjusting your filters'}
+                      <p className="text-sm font-medium text-slate-100">You&apos;ve hit the FREE plan cap</p>
+                      <p className="text-xs text-slate-500">
+                        Pro tracks up to {PLAN_LIMITS.PRO.maxTrackedRepos} repos with full history and real-time sync.
                       </p>
                     </div>
-                    {(search || filter !== 'all' || langFilter !== 'all') && (
-                      <button
-                        onClick={() => { setSearch(''); setFilter('all'); setLangFilter('all') }}
-                        className="cursor-pointer text-xs text-cyan-500 hover:text-cyan-400 transition-colors"
-                      >
-                        Clear filters
-                      </button>
-                    )}
                   </div>
-                )
-                : filtered.map((repo) => (
-                  <RepoCard
-                    key={repo.id}
-                    repo={repo}
-                    maxCommits={maxCommits}
-                    onToggleTrack={handleToggle}
-                    onSync={handleSync}
-                    syncing={syncing && currentSyncId === repo.id}
+                  <Button asChild size="sm">
+                    <Link href="/settings#billing">Upgrade →</Link>
+                  </Button>
+                </div>
+              )}
+
+              {/* Filters */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Search */}
+                <div className="relative flex-1 min-w-52">
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
+                  <Input
+                    className="pl-8"
+                    placeholder="Search repositories…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
                   />
-                ))}
-          </div>
+                </div>
+
+                {/* Tracking filter */}
+                <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+                  {(['all', 'tracked', 'untracked'] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setFilter(f)}
+                      className={`cursor-pointer rounded-md px-3 py-1 text-xs font-medium transition-colors capitalize ${
+                        filter === f ? 'bg-surface-2 text-slate-100' : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Language filter */}
+                {availableLangs.length > 0 && (
+                  <div className="relative">
+                    <select
+                      value={langFilter}
+                      onChange={(e) => setLangFilter(e.target.value)}
+                      className="cursor-pointer appearance-none rounded-lg border border-border bg-surface px-3 py-1.5 pr-7 text-xs font-medium text-slate-400 transition-colors hover:border-border-2 hover:text-slate-200 focus:outline-none"
+                    >
+                      <option value="all">All languages</option>
+                      {availableLangs.map((l) => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-600" />
+                  </div>
+                )}
+
+                {/* Sort */}
+                <div className="relative">
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as typeof sort)}
+                    className="cursor-pointer appearance-none rounded-lg border border-border bg-surface px-3 py-1.5 pr-7 text-xs font-medium text-slate-400 transition-colors hover:border-border-2 hover:text-slate-200 focus:outline-none"
+                  >
+                    <option value="activity">Recent activity</option>
+                    <option value="commits">Most commits</option>
+                    <option value="alpha">Alphabetical</option>
+                    <option value="added">Recently added</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-600" />
+                </div>
+              </div>
+
+              {/* List */}
+              <div className="space-y-2">
+                {initialLoad
+                  ? Array.from({ length: 5 }).map((_, i) => <RepoCardSkeleton key={i} />)
+                  : filtered.length === 0
+                    ? (
+                      <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.03] text-slate-600">
+                          <Search className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-400">No repositories found</p>
+                          <p className="mt-1 text-xs text-slate-600">
+                            {search ? `No results for "${search}"` : 'Try adjusting your filters'}
+                          </p>
+                        </div>
+                        {(search || filter !== 'all' || langFilter !== 'all') && (
+                          <button
+                            onClick={() => { setSearch(''); setFilter('all'); setLangFilter('all') }}
+                            className="cursor-pointer text-xs text-cyan-500 hover:text-cyan-400 transition-colors"
+                          >
+                            Clear filters
+                          </button>
+                        )}
+                      </div>
+                    )
+                    : filtered.map((repo) => (
+                      <RepoCard
+                        key={repo.id}
+                        repo={repo}
+                        maxCommits={maxCommits}
+                        onToggleTrack={handleToggle}
+                        onSync={handleSync}
+                        syncing={syncing && currentSyncId === repo.id}
+                      />
+                    ))}
+              </div>
+            </>
+          )}
         </>
       )}
 

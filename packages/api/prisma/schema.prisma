@@ -27,6 +27,7 @@ model User {
   email                 String?  @unique
   name                  String?
   githubId              String   @unique
+  githubUsername        String?  // GitHub login handle (e.g. "DanielMoliari"), updated on every OAuth
   githubToken           String   // AES-256-GCM encrypted
   avatarUrl             String?
   plan                  Plan     @default(FREE)

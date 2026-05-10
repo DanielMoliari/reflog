@@ -85,6 +85,9 @@ export class PublicProfileResolver {
       joinedAt: data.joinedAt instanceof Date ? data.joinedAt : new Date(data.joinedAt as unknown as string),
       activeDays: data.activeDays,
       totalCommits: data.totalCommits,
+      totalAdditions: data.totalAdditions,
+      totalPrs: data.totalPrs,
+      avgCommitsPerActiveDay: data.avgCommitsPerActiveDay,
       topLanguages: data.topLanguages,
       recentActivity: data.recentActivity.map((a) => ({
         ...a,

@@ -68,3 +68,12 @@ export const SEND_TEST_DIGEST = gql`
     sendTestDigest
   }
 `
+
+export const IMPORT_GITHUB_REPOSITORIES = gql`
+  mutation ImportGitHubRepositories {
+    importFromGitHub {
+      imported
+      tracked
+    }
+  }
+`

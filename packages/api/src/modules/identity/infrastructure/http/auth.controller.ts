@@ -4,6 +4,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger'
 import type { FastifyReply } from 'fastify'
 import { GitHubProfileVO } from '../../domain/value-objects/github-profile.vo'
 import { IdentityService } from '../../application/services/identity.service'
+import { WelcomeEmailService } from '../../../../modules/notifications/application/services/welcome-email.service'
 
 interface GitHubTokenResponse {
   access_token?: string
@@ -33,6 +34,7 @@ export class AuthController {
   constructor(
     private readonly identityService: IdentityService,
     private readonly config: ConfigService,
+    private readonly welcomeEmailService: WelcomeEmailService,
   ) {}
 
   @Get('github')
@@ -64,7 +66,9 @@ export class AuthController {
       accessToken,
     )
 
-    const { accessToken: jwt } = await this.identityService.loginWithGitHub(vo)
+    const { accessToken: jwt, user } = await this.identityService.loginWithGitHub(vo)
+    // Fire-and-forget: sends welcome email only for brand-new accounts (createdAt < 2 min ago)
+    void this.welcomeEmailService.maybeSendWelcome(user)
     const frontendUrl = this.frontendBaseUrl()
     await reply.status(302).redirect(`${frontendUrl}/auth/callback?token=${jwt}`)
   }

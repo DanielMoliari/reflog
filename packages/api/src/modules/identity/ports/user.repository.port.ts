@@ -14,6 +14,7 @@ export interface IUserRepository {
   findByUsername(username: string): Promise<User | null>
   upsertFromGitHub(data: {
     githubId: string
+    githubUsername: string | null
     name: string | null
     email: string | null
     avatarUrl: string | null

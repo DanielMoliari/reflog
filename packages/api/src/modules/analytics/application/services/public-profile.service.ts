@@ -12,6 +12,9 @@ export interface PublicProfileData {
   joinedAt: Date
   activeDays: number
   totalCommits: number
+  totalAdditions: number
+  totalPrs: number
+  avgCommitsPerActiveDay: number
   currentStreak: number | null
   longestStreak: number | null
   topLanguages: { name: string; bytes: number; percent: number }[]
@@ -76,14 +79,20 @@ export class PublicProfileService {
 
     // All-time totals
     let totalCommits = 0
+    let totalAdditions = 0
+    let totalPrs = 0
     const activeDaySet = new Set<string>()
     for (const m of allMetrics) {
       totalCommits += m.commits
+      totalAdditions += m.additions
+      totalPrs += m.prsOpened
       if (m.commits > 0) {
         const d = m.date instanceof Date ? m.date : new Date(m.date as unknown as string)
         activeDaySet.add(d.toISOString().slice(0, 10))
       }
     }
+    const avgCommitsPerActiveDay =
+      activeDaySet.size > 0 ? Math.round((totalCommits / activeDaySet.size) * 10) / 10 : 0
 
     // Last 365 days heatmap, aggregated across repos per day
     const today = new Date()
@@ -110,6 +119,9 @@ export class PublicProfileService {
       joinedAt: user.createdAt,
       activeDays: recentActiveDays,
       totalCommits,
+      totalAdditions,
+      totalPrs,
+      avgCommitsPerActiveDay,
       currentStreak: streak ? streak.currentStreak : null,
       longestStreak: streak ? streak.longestStreak : null,
       topLanguages,
