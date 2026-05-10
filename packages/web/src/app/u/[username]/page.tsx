@@ -170,15 +170,17 @@ function NotFoundState({ username }: { username: string }) {
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-surface-2">
         <GitBranch className="h-7 w-7 text-slate-500" />
       </div>
-      <h1 className="text-2xl font-bold text-slate-100">No profile here</h1>
+      <h1 className="text-2xl font-bold text-slate-100">No profile found</h1>
       <p className="mt-3 text-sm leading-relaxed text-slate-500">
-        <span className="font-mono text-slate-300">@{username}</span> doesn&apos;t exist on reflog or GitHub.
+        <span className="font-mono text-slate-300">@{username}</span> isn&apos;t on reflog yet
+        and wasn&apos;t found on GitHub either.
       </p>
+      <p className="mt-2 text-xs text-slate-600">Double-check the username — or be the first.</p>
       <Link
         href="/"
-        className="mt-8 inline-flex items-center gap-2 rounded-md border border-border-2 bg-surface-2 px-4 py-2 text-sm text-slate-200 hover:bg-surface-3 transition-colors"
+        className="mt-8 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors"
       >
-        Track your own pulse with reflog
+        Start tracking for free →
       </Link>
     </div>
   )
@@ -291,15 +293,18 @@ function GitHubProfilePage({ gh }: { gh: GithubProfile }) {
       )}
 
       {/* CTA */}
-      <footer className="rounded-xl border border-border-2 bg-surface-2 px-6 py-8 text-center">
-        <p className="text-sm font-medium text-slate-200">Want deeper insights than GitHub shows?</p>
-        <p className="mt-1 text-xs text-slate-500">Track streaks, commit heatmaps, language evolution and more.</p>
+      <footer className="rounded-xl border border-accent/20 bg-gradient-to-br from-accent/5 to-transparent px-6 py-8 text-center">
+        <p className="text-base font-semibold text-slate-100">See your own developer story</p>
+        <p className="mt-1.5 text-sm text-slate-400 max-w-sm mx-auto">
+          Connect GitHub and get your commit streaks, language evolution, and contribution heatmap — all in one place.
+        </p>
         <Link
           href="/"
-          className="mt-4 inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
+          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors"
         >
-          Track your pulse with reflog
+          Start tracking for free →
         </Link>
+        <p className="mt-3 text-[11px] text-slate-600">Free plan · No credit card required</p>
       </footer>
     </div>
   )
@@ -512,12 +517,19 @@ export default async function PublicProfilePage({ params }: PageProps) {
         </section>
       )}
 
-      <footer className="pt-6 pb-12 text-center">
-        <p className="text-xs text-slate-600">
-          Built with{' '}
-          <Link href="/" className="text-accent hover:underline">reflog</Link>
-          {' '}— track your own developer pulse
+      {/* CTA */}
+      <footer className="rounded-xl border border-accent/20 bg-gradient-to-br from-accent/5 to-transparent px-6 py-8 text-center">
+        <p className="text-base font-semibold text-slate-100">See your own developer story</p>
+        <p className="mt-1.5 text-sm text-slate-400 max-w-sm mx-auto">
+          Connect GitHub and get your commit streaks, language evolution, and contribution heatmap — all in one place.
         </p>
+        <Link
+          href="/"
+          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors"
+        >
+          Start tracking for free →
+        </Link>
+        <p className="mt-3 text-[11px] text-slate-600">Free plan · No credit card required</p>
       </footer>
     </div>
   )

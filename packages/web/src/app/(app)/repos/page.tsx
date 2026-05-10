@@ -180,12 +180,10 @@ export default function ReposPage() {
                   )}
                 </div>
                 {meData?.me?.plan === 'FREE' && (
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/settings#billing">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Upgrade to Pro
-                    </Link>
-                  </Button>
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Upgrade to Pro
+                  </span>
                 )}
               </div>
 
@@ -203,9 +201,9 @@ export default function ReposPage() {
                       </p>
                     </div>
                   </div>
-                  <Button asChild size="sm">
-                    <Link href="/settings#billing">Upgrade →</Link>
-                  </Button>
+                  <span className="inline-flex cursor-default items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent">
+                    Upgrade →
+                  </span>
                 </div>
               )}
 

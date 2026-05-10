@@ -246,9 +246,9 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-slate-200">Auto-sync every 6 hours</p>
-                <p className="text-[11px] text-slate-600">Keeps your metrics up to date automatically</p>
+                <p className="text-[11px] text-slate-600">Always on — your metrics update automatically</p>
               </div>
-              <Switch disabled checked={true} />
+              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">Always on</span>
             </div>
           </div>
 

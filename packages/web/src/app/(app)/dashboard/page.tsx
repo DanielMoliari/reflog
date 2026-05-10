@@ -144,8 +144,8 @@ export default function DashboardPage() {
   const hasTrackedRepos = trackedRepos.length > 0
   const currentStreak = streak?.currentStreak ?? 0
   const MILESTONES = [7, 30, 60, 100, 200, 365]
-  const hitMilestone = MILESTONES.find((m) => currentStreak === m) ?? null
-  const showMilestone = hitMilestone !== null && !dismissedMilestones.includes(hitMilestone)
+  const hitMilestone = [...MILESTONES].reverse().find((m) => currentStreak >= m && !dismissedMilestones.includes(m)) ?? null
+  const showMilestone = hitMilestone !== null
 
   // For week view we want the latest 7 days only as the KPI window
   const kpiSlice = range === 'week' ? metrics.slice(-7) : metrics
