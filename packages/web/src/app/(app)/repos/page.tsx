@@ -15,6 +15,7 @@ import { TRACK_REPOSITORY, UNTRACK_REPOSITORY, SYNC_REPOSITORY, IMPORT_GITHUB_RE
 import type { Repository, User } from '@/graphql/types'
 import { PLAN_LIMITS } from '@/lib/plan-limits'
 import { languageColor } from '@/lib/utils'
+import { useUpgradeModalStore } from '@/store/upgrade-modal-store'
 
 type Tab = 'repos' | 'stack'
 
@@ -37,6 +38,7 @@ function pol(cx: number, cy: number, r: number, angleDeg: number) {
 
 export default function ReposPage() {
   const [activeTab, setActiveTab] = useState<Tab>('repos')
+  const openUpgradeModal = useUpgradeModalStore((s) => s.openModal)
 
   const { data: meData } = useQuery<{ me: User }>(ME_QUERY)
   const [search, setSearch] = useState('')
@@ -180,10 +182,13 @@ export default function ReposPage() {
                   )}
                 </div>
                 {meData?.me?.plan === 'FREE' && (
-                  <span className="inline-flex items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent">
+                  <button
+                    onClick={() => openUpgradeModal('Track unlimited repos')}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/15 transition-colors"
+                  >
                     <Sparkles className="h-3.5 w-3.5" />
                     Upgrade to Pro
-                  </span>
+                  </button>
                 )}
               </div>
 
@@ -201,9 +206,12 @@ export default function ReposPage() {
                       </p>
                     </div>
                   </div>
-                  <span className="inline-flex cursor-default items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent">
+                  <button
+                    onClick={() => openUpgradeModal("You've hit the FREE plan cap")}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/15 transition-colors"
+                  >
                     Upgrade →
-                  </span>
+                  </button>
                 </div>
               )}
 

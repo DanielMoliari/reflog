@@ -1,4 +1,4 @@
-import { Field, ID, ObjectType, registerEnumType } from '@nestjs/graphql'
+import { Field, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql'
 import { Plan } from '@prisma/client'
 
 registerEnumType(Plan, { name: 'Plan', description: 'User subscription plan' })
@@ -40,6 +40,21 @@ export class UserType {
 
   @Field({ defaultValue: true, description: 'Include current/longest streak on the public profile' })
   publicShowStreak: boolean
+
+  @Field({ defaultValue: true, description: 'When false, the 6h cron skips this user' })
+  autoSyncEnabled: boolean
+
+  @Field(() => Int, { defaultValue: 6, description: 'Auto-sync interval in hours: 1, 6, or 24' })
+  autoSyncIntervalHours: number
+
+  @Field({ nullable: true, description: 'Stripe subscription status: active | trialing | past_due | canceled | etc.' })
+  subscriptionStatus?: string
+
+  @Field({ nullable: true, description: 'Date the current billing period ends (renews or cancels)' })
+  currentPeriodEnd?: Date
+
+  @Field({ nullable: true, description: 'monthly | yearly' })
+  billingInterval?: string
 
   @Field()
   createdAt: Date

@@ -716,12 +716,41 @@ export class AnalyticsService {
   }
 
   async autoSyncStaleRepositories(): Promise<void> {
-    const FIVE_HOURS_MS = 5 * 60 * 60 * 1_000
-    const stale = await this.metricsRepo.findStaleTrackedRepositories(FIVE_HOURS_MS)
-    for (const repo of stale) {
-      await this.enqueueSyncJob(repo.userId, repo.id, repo.fullName)
+    // Pull broadly (1h staleness floor) then filter per-user based on their prefs.
+    // Users who disabled auto-sync are skipped; the user's chosen interval (1/6/24h) is enforced.
+    const ONE_HOUR_MS = 60 * 60 * 1_000
+    const stale = await this.metricsRepo.findStaleTrackedRepositories(ONE_HOUR_MS)
+    if (stale.length === 0) {
+      this.logger.log('Auto-sync: no stale repositories')
+      return
     }
-    this.logger.log(`Auto-sync: enqueued ${stale.length} stale repositories`)
+
+    // Group by userId so we hit the user table once per user
+    const byUser = new Map<string, typeof stale>()
+    for (const repo of stale) {
+      const arr = byUser.get(repo.userId) ?? []
+      arr.push(repo)
+      byUser.set(repo.userId, arr)
+    }
+
+    let queued = 0
+    let skippedUsers = 0
+    const now = Date.now()
+    for (const [userId, repos] of byUser) {
+      const user = await this.identityService.findById(userId)
+      if (!user || !user.autoSyncEnabled) {
+        skippedUsers++
+        continue
+      }
+      const intervalMs = user.autoSyncIntervalHours * 60 * 60 * 1_000
+      for (const repo of repos) {
+        const lastSyncedMs = repo.lastSyncedAt ? new Date(repo.lastSyncedAt).getTime() : 0
+        if (now - lastSyncedMs < intervalMs) continue
+        await this.enqueueSyncJob(repo.userId, repo.id, repo.fullName)
+        queued++
+      }
+    }
+    this.logger.log(`Auto-sync: enqueued ${queued} repos across ${byUser.size - skippedUsers} active users (skipped ${skippedUsers} users with autoSync disabled)`)
   }
 
   @Cron(CronExpression.EVERY_6_HOURS)

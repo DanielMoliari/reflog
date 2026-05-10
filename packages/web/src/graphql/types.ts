@@ -15,7 +15,20 @@ export interface User {
   streakAlertsEnabled: boolean
   publicShowRepos: boolean
   publicShowStreak: boolean
+  autoSyncEnabled: boolean
+  autoSyncIntervalHours: number
+  subscriptionStatus: string | null
+  currentPeriodEnd: string | null
+  billingInterval: string | null
   createdAt: string
+}
+
+export interface BillingStatus {
+  configured: boolean
+  hasActiveSubscription: boolean
+  subscriptionStatus: string | null
+  currentPeriodEnd: string | null
+  billingInterval: string | null
 }
 
 export interface PublicProfileLanguage {

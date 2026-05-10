@@ -2,11 +2,27 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type BillingStatusType {
+  billingInterval: String
+
+  """
+  Whether the Stripe integration has API keys configured in this environment
+  """
+  configured: Boolean!
+  currentPeriodEnd: DateTime
+  hasActiveSubscription: Boolean!
+  subscriptionStatus: String
+}
+
 type BurnoutSignalType {
   atRisk: Boolean!
   consecutiveDays: Int!
   message: String!
   netLinesTrend: Float!
+}
+
+type CheckoutSessionType {
+  url: String!
 }
 
 type CodeHealthType {
@@ -110,6 +126,12 @@ input MetricsRangeInput {
 }
 
 type Mutation {
+  """Create a Stripe Checkout session for upgrading"""
+  createCheckoutSession(interval: String!, plan: String!): CheckoutSessionType!
+
+  """Open the Stripe customer portal for self-service billing"""
+  createPortalSession: PortalSessionType!
+
   """Permanently delete the authenticated user account and all data"""
   deleteAccount: Boolean!
 
@@ -127,6 +149,9 @@ type Mutation {
 
   """Stop tracking a repository"""
   untrackRepository(id: ID!): Boolean!
+
+  """Update auto-sync preferences (enabled flag and interval)"""
+  updateAutoSyncPrefs(input: UpdateAutoSyncPrefsInput!): UserType!
 
   """Update notification preferences for the authenticated user"""
   updateNotificationPrefs(input: UpdateNotificationPrefsInput!): UserType!
@@ -148,6 +173,10 @@ enum Plan {
 type PlatformStatsType {
   commitCount: Float!
   userCount: Float!
+}
+
+type PortalSessionType {
+  url: String!
 }
 
 type PrImpactType {
@@ -216,6 +245,9 @@ type PublicRepoType {
 }
 
 type Query {
+  """Stripe configuration + current subscription state"""
+  billingStatus: BillingStatusType!
+
   """Get contribution heatmap data"""
   heatmap(metric: HeatmapMetric, year: Int): [HeatmapDayType!]!
 
@@ -414,6 +446,11 @@ type TechGraphType {
   nodes: [TechGraphNodeType!]!
 }
 
+input UpdateAutoSyncPrefsInput {
+  autoSyncEnabled: Boolean
+  autoSyncIntervalHours: Int
+}
+
 input UpdateNotificationPrefsInput {
   notificationsEnabled: Boolean
   streakAlertsEnabled: Boolean
@@ -430,8 +467,19 @@ input UpdatePublicProfilePrefsInput {
 }
 
 type UserType {
+  """When false, the 6h cron skips this user"""
+  autoSyncEnabled: Boolean!
+
+  """Auto-sync interval in hours: 1, 6, or 24"""
+  autoSyncIntervalHours: Int!
   avatarUrl: String
+
+  """monthly | yearly"""
+  billingInterval: String
   createdAt: DateTime!
+
+  """Date the current billing period ends (renews or cancels)"""
+  currentPeriodEnd: DateTime
   email: String
   githubId: String!
 
@@ -450,6 +498,11 @@ type UserType {
   """Include current/longest streak on the public profile"""
   publicShowStreak: Boolean!
   streakAlertsEnabled: Boolean!
+
+  """
+  Stripe subscription status: active | trialing | past_due | canceled | etc.
+  """
+  subscriptionStatus: String
 
   """GitHub-style display handle — falls back to name or githubId"""
   username: String

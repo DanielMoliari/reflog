@@ -15,6 +15,23 @@ export const ME_QUERY = gql`
       streakAlertsEnabled
       publicShowRepos
       publicShowStreak
+      autoSyncEnabled
+      autoSyncIntervalHours
+      subscriptionStatus
+      currentPeriodEnd
+      billingInterval
+    }
+  }
+`
+
+export const BILLING_STATUS_QUERY = gql`
+  query BillingStatus {
+    billingStatus {
+      configured
+      hasActiveSubscription
+      subscriptionStatus
+      currentPeriodEnd
+      billingInterval
     }
   }
 `

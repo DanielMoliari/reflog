@@ -77,3 +77,29 @@ export const IMPORT_GITHUB_REPOSITORIES = gql`
     }
   }
 `
+
+export const CREATE_CHECKOUT_SESSION = gql`
+  mutation CreateCheckoutSession($plan: String!, $interval: String!) {
+    createCheckoutSession(plan: $plan, interval: $interval) {
+      url
+    }
+  }
+`
+
+export const CREATE_PORTAL_SESSION = gql`
+  mutation CreatePortalSession {
+    createPortalSession {
+      url
+    }
+  }
+`
+
+export const UPDATE_AUTO_SYNC_PREFS = gql`
+  mutation UpdateAutoSyncPrefs($input: UpdateAutoSyncPrefsInput!) {
+    updateAutoSyncPrefs(input: $input) {
+      id
+      autoSyncEnabled
+      autoSyncIntervalHours
+    }
+  }
+`

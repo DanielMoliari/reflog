@@ -1,26 +1,32 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation } from '@apollo/client/react'
-import { Save, Bell, GitBranch, Copy, Check, ExternalLink, User, Trash2, Eye } from 'lucide-react'
+import {
+  Save, Bell, GitBranch, Copy, Check, ExternalLink, User, Trash2, Eye,
+  CreditCard, Sparkles,
+} from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ME_QUERY, REPOSITORIES_QUERY } from '@/graphql/queries'
+import { BILLING_STATUS_QUERY, ME_QUERY, REPOSITORIES_QUERY } from '@/graphql/queries'
 import {
   UPDATE_PROFILE,
   UPDATE_NOTIFICATION_PREFS,
   UPDATE_PUBLIC_PROFILE_PREFS,
   DELETE_ACCOUNT,
+  CREATE_PORTAL_SESSION,
+  UPDATE_AUTO_SYNC_PREFS,
 } from '@/graphql/mutations'
-import type { User as UserType } from '@/graphql/types'
+import type { BillingStatus, User as UserType } from '@/graphql/types'
 import { clearToken } from '@/lib/auth'
+import { useUpgradeModalStore } from '@/store/upgrade-modal-store'
 
-type Section = 'profile' | 'connections' | 'notifications' | 'danger'
+type Section = 'profile' | 'connections' | 'billing' | 'notifications' | 'danger'
 
 interface NavItem {
   id: Section
@@ -38,32 +44,42 @@ interface Repository {
 const NAV_ITEMS: NavItem[] = [
   { id: 'profile', label: 'Profile', Icon: User },
   { id: 'connections', label: 'Connections', Icon: GitBranch },
+  { id: 'billing', label: 'Billing', Icon: CreditCard },
   { id: 'notifications', label: 'Notifications', Icon: Bell },
   { id: 'danger', label: 'Delete account', Icon: Trash2, danger: true },
 ]
 
 export default function SettingsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const openUpgradeModal = useUpgradeModalStore((s) => s.openModal)
   const [activeSection, setActiveSection] = useState<Section>('profile')
 
   const { data, loading } = useQuery<{ me: UserType }>(ME_QUERY)
   const { data: reposData } = useQuery<{ repositories: Repository[] }>(REPOSITORIES_QUERY)
+  const { data: billingData } = useQuery<{ billingStatus: BillingStatus }>(BILLING_STATUS_QUERY)
 
   const [updateProfile, { loading: saving }] = useMutation(UPDATE_PROFILE, { refetchQueries: [ME_QUERY] })
   const [updateNotificationPrefs, { loading: savingPrefs }] = useMutation(UPDATE_NOTIFICATION_PREFS, { refetchQueries: [ME_QUERY] })
   const [updatePublicProfilePrefs, { loading: savingVis }] = useMutation(UPDATE_PUBLIC_PROFILE_PREFS, { refetchQueries: [ME_QUERY] })
+  const [updateAutoSync, { loading: savingAutoSync }] = useMutation(UPDATE_AUTO_SYNC_PREFS, { refetchQueries: [ME_QUERY] })
+  const [createPortalSession, { loading: loadingPortal }] = useMutation<{ createPortalSession: { url: string } }>(CREATE_PORTAL_SESSION)
   const [deleteAccountMutation, { loading: deleting }] = useMutation(DELETE_ACCOUNT)
 
   const user = data?.me
   const repos = reposData?.repositories ?? []
+  const billingStatus = billingData?.billingStatus
 
   const [name, setName] = useState('')
   const [weeklyDigest, setWeeklyDigest] = useState(true)
   const [streakAlerts, setStreakAlerts] = useState(true)
   const [showStreak, setShowStreak] = useState(true)
   const [showRepos, setShowRepos] = useState(true)
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true)
+  const [autoSyncIntervalHours, setAutoSyncIntervalHours] = useState(6)
   const [copied, setCopied] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [portalError, setPortalError] = useState<string | null>(null)
 
   if (user && name === '') {
     if (user.name) setName(user.name)
@@ -75,7 +91,19 @@ export default function SettingsPage() {
     setStreakAlerts(user.streakAlertsEnabled)
     setShowStreak(user.publicShowStreak)
     setShowRepos(user.publicShowRepos)
+    setAutoSyncEnabled(user.autoSyncEnabled)
+    setAutoSyncIntervalHours(user.autoSyncIntervalHours)
   }, [user])
+
+  // Handle ?billing=success / ?billing=canceled / ?tab=billing
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    const billing = searchParams.get('billing')
+    if (tab === 'billing' || billing === 'success' || billing === 'canceled') {
+      setActiveSection('billing')
+      if (billing) router.replace('/settings')
+    }
+  }, [searchParams, router])
 
   function handleSave() {
     void updateProfile({ variables: { input: { name: name || undefined } } })
@@ -99,6 +127,29 @@ export default function SettingsPage() {
   function handleToggleShowRepos(next: boolean) {
     setShowRepos(next)
     void updatePublicProfilePrefs({ variables: { input: { showRepos: next } } })
+  }
+
+  function handleToggleAutoSync(next: boolean) {
+    setAutoSyncEnabled(next)
+    void updateAutoSync({ variables: { input: { autoSyncEnabled: next } } })
+  }
+
+  function handleSetAutoSyncInterval(hours: number) {
+    setAutoSyncIntervalHours(hours)
+    void updateAutoSync({ variables: { input: { autoSyncIntervalHours: hours } } })
+  }
+
+  async function handleManageBilling() {
+    setPortalError(null)
+    try {
+      const { data: portalData } = await createPortalSession()
+      if (portalData?.createPortalSession?.url) {
+        window.location.href = portalData.createPortalSession.url
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not open billing portal'
+      setPortalError(msg.replace(/^.*?(Forbidden|Not Found):?\s*/, ''))
+    }
   }
 
   async function handleDeleteAccount() {
@@ -245,11 +296,41 @@ export default function SettingsPage() {
           <div className="border-t border-border pt-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-200">Auto-sync every 6 hours</p>
-                <p className="text-[11px] text-slate-600">Always on — your metrics update automatically</p>
+                <p className="text-xs font-medium text-slate-200">Auto-sync</p>
+                <p className="text-[11px] text-slate-600">
+                  {autoSyncEnabled
+                    ? 'Your metrics update automatically in the background'
+                    : 'Manual syncs only — click Sync to refresh'}
+                </p>
               </div>
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">Always on</span>
+              <Switch
+                checked={autoSyncEnabled}
+                onCheckedChange={handleToggleAutoSync}
+                disabled={loading || savingAutoSync}
+              />
             </div>
+
+            {autoSyncEnabled && (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-slate-500">Sync interval</p>
+                <div className="flex gap-1 rounded-md bg-surface-2 p-0.5">
+                  {[1, 6, 24].map((h) => (
+                    <button
+                      key={h}
+                      onClick={() => handleSetAutoSyncInterval(h)}
+                      disabled={savingAutoSync}
+                      className={`cursor-pointer rounded px-3 py-1 text-[11px] font-medium transition-colors ${
+                        autoSyncIntervalHours === h
+                          ? 'bg-bg text-slate-100 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      {h === 1 ? 'Every hour' : h === 6 ? 'Every 6h' : 'Daily'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {lastSyncedAt && (
@@ -317,6 +398,95 @@ export default function SettingsPage() {
     )
   }
 
+  function renderBilling() {
+    const planLabel = user?.plan ?? '...'
+    const planDescription =
+      user?.plan === 'FREE' ? 'Limited to 5 tracked repositories'
+      : user?.plan === 'PRO' ? 'Up to 100 tracked repositories with full history'
+      : user?.plan === 'TEAM' ? 'Up to 500 tracked repositories + custom domain'
+      : ''
+
+    const billingSuccess = searchParams.get('billing') === 'success'
+    const billingCanceled = searchParams.get('billing') === 'canceled'
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-100">Billing</h2>
+          <p className="mt-0.5 text-xs text-slate-500">Manage your subscription and payment method.</p>
+        </div>
+
+        {billingSuccess && (
+          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+            Payment confirmed — your plan has been upgraded.
+          </div>
+        )}
+        {billingCanceled && (
+          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+            Checkout canceled. No charges were made.
+          </div>
+        )}
+
+        <div className="rounded-lg border border-border-2 bg-surface p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-slate-500">Current plan</p>
+              <p className="mt-1 text-2xl font-bold text-slate-100">{planLabel}</p>
+              <p className="mt-1 text-xs text-slate-500">{planDescription}</p>
+            </div>
+            {user?.plan === 'FREE' ? (
+              <Button onClick={() => openUpgradeModal()} size="sm" className="cursor-pointer">
+                <Sparkles className="h-3.5 w-3.5" />
+                Upgrade
+              </Button>
+            ) : (
+              <Button
+                onClick={handleManageBilling}
+                variant="outline"
+                size="sm"
+                disabled={loadingPortal}
+                className="cursor-pointer"
+              >
+                {loadingPortal ? 'Loading…' : 'Manage subscription'}
+              </Button>
+            )}
+          </div>
+
+          {user?.plan !== 'FREE' && user?.currentPeriodEnd && (
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-[11px] text-slate-600">
+                {user.subscriptionStatus === 'active' ? 'Next billing date' : 'Period ends'}:{' '}
+                <span className="text-slate-300">
+                  {new Date(user.currentPeriodEnd).toLocaleDateString(undefined, {
+                    month: 'long', day: 'numeric', year: 'numeric',
+                  })}
+                </span>
+                {user.billingInterval && ` · billed ${user.billingInterval}`}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {portalError && (
+          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+            {portalError}
+          </div>
+        )}
+
+        {billingStatus && !billingStatus.configured && (
+          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+            Stripe is not configured in this environment yet. Billing controls are read-only — payments will be enabled soon.
+          </div>
+        )}
+
+        <p className="text-[11px] text-slate-600">
+          Need help with billing?{' '}
+          <a href="mailto:hello@reflog.app" className="text-accent hover:underline">hello@reflog.app</a>
+        </p>
+      </div>
+    )
+  }
+
   function renderDanger() {
     return (
       <div className="space-y-6">
@@ -373,6 +543,7 @@ export default function SettingsPage() {
   const sectionContent: Record<Section, () => React.ReactNode> = {
     profile: renderProfile,
     connections: renderConnections,
+    billing: renderBilling,
     notifications: renderNotifications,
     danger: renderDanger,
   }

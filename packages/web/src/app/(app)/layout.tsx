@@ -7,9 +7,11 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { Sidebar, MobileDrawer } from '@/components/sidebar'
 import { NavHeader } from '@/components/nav-header'
 import { SyncPanel } from '@/components/sync-panel'
+import { UpgradeModal } from '@/components/upgrade-modal'
 import { isAuthenticated } from '@/lib/auth'
-import { REPOSITORIES_QUERY } from '@/graphql/queries'
-import type { Repository } from '@/graphql/types'
+import { ME_QUERY, REPOSITORIES_QUERY } from '@/graphql/queries'
+import type { Repository, User } from '@/graphql/types'
+import { useUpgradeModalStore } from '@/store/upgrade-modal-store'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -21,6 +23,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [router])
 
   const { data: reposData } = useQuery<{ repositories: Repository[] }>(REPOSITORIES_QUERY)
+  const { data: meData } = useQuery<{ me: User }>(ME_QUERY)
+  const { open: upgradeOpen, headline: upgradeHeadline, closeModal: closeUpgradeModal } = useUpgradeModalStore()
+  const currentPlan = (meData?.me?.plan ?? 'FREE') as 'FREE' | 'PRO' | 'TEAM'
+
   const isSyncing = (reposData?.repositories ?? []).some((r) => r.isTracked && r.syncState === 'SYNCING')
 
   // Auto-open the sync panel when background sync is detected (e.g. on first login import)
@@ -43,6 +49,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <NavHeader onSyncOpen={() => setSyncOpen(true)} />
           <main className="flex-1 overflow-y-auto p-6">{children}</main>
           <SyncPanel open={syncOpen} onClose={() => setSyncOpen(false)} />
+          <UpgradeModal
+            open={upgradeOpen}
+            onOpenChange={(o) => !o && closeUpgradeModal()}
+            currentPlan={currentPlan}
+            {...(upgradeHeadline ? { headline: upgradeHeadline } : {})}
+          />
         </div>
       </div>
     </TooltipProvider>

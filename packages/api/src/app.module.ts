@@ -10,6 +10,7 @@ import { QueueModule } from './infrastructure/queue/queue.module'
 import { RedisModule } from './infrastructure/cache/redis.module'
 import { IdentityModule } from './modules/identity/identity.module'
 import { AnalyticsModule } from './modules/analytics/analytics.module'
+import { BillingModule } from './modules/billing/billing.module'
 import { NotificationsModule } from './modules/notifications/notifications.module'
 import { WebhooksModule } from './modules/webhooks/webhooks.module'
 import { AppController } from './app.controller'
@@ -45,6 +46,7 @@ import { AppService } from './app.service'
     QueueModule,
     IdentityModule,
     AnalyticsModule,
+    BillingModule,
     NotificationsModule,
     WebhooksModule,
   ],

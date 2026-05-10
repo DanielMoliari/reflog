@@ -38,6 +38,15 @@ model User {
   publicProfile         Boolean  @default(false)
   publicShowRepos       Boolean  @default(true)
   publicShowStreak      Boolean  @default(true)
+  // ── Billing (Stripe) ────────────────────────────────────────────────────────
+  stripeCustomerId      String?  @unique
+  stripeSubscriptionId  String?  @unique
+  subscriptionStatus    String?  // "active" | "trialing" | "past_due" | "canceled" | "incomplete" | etc.
+  currentPeriodEnd      DateTime?
+  billingInterval       String?  // "monthly" | "yearly"
+  // ── Sync preferences ────────────────────────────────────────────────────────
+  autoSyncEnabled       Boolean  @default(true)
+  autoSyncIntervalHours Int      @default(6)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

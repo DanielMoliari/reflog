@@ -1,46 +1,97 @@
 'use client'
 
 import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:17642'
 
-const COMPARE_ROWS = [
-  { label: 'Repositories tracked',  free: '5',       pro: 'Unlimited' },
-  { label: 'Commit history',        free: '30 days', pro: 'All time'  },
-  { label: 'Real-time sync',        free: false,     pro: true        },
-  { label: 'Advanced analytics',    free: false,     pro: true        },
-  { label: 'API access',            free: false,     pro: true        },
-  { label: 'Public profile & card', free: true,      pro: true        },
-  { label: 'Weekly digest email',   free: true,      pro: true        },
-  { label: 'Priority support',      free: false,     pro: true        },
+interface PlanRow {
+  id: 'FREE' | 'PRO' | 'TEAM'
+  name: string
+  description: string
+  monthly: number
+  yearly: number
+  features: string[]
+  highlight: boolean
+  cta: string
+}
+
+// Source of truth — keep aligned with `packages/web/src/components/upgrade-modal.tsx`
+const PLANS: PlanRow[] = [
+  {
+    id: 'FREE',
+    name: 'Free',
+    description: 'For exploring',
+    monthly: 0,
+    yearly: 0,
+    features: ['5 tracked repositories', '30-day history', 'Public profile', 'Weekly digest email'],
+    highlight: false,
+    cta: 'Get started free',
+  },
+  {
+    id: 'PRO',
+    name: 'Pro',
+    description: 'For serious developers',
+    monthly: 8,
+    yearly: 77,
+    features: [
+      '100 tracked repositories',
+      'Full history',
+      'Real-time sync (1h interval)',
+      'Advanced analytics',
+      'API access',
+      'Priority support',
+    ],
+    highlight: true,
+    cta: 'Start with Pro',
+  },
+  {
+    id: 'TEAM',
+    name: 'Team',
+    description: 'For squads & agencies',
+    monthly: 24,
+    yearly: 230,
+    features: [
+      '500 tracked repositories',
+      'Everything in Pro',
+      'Custom domain',
+      'Team dashboard',
+      'SSO (coming soon)',
+    ],
+    highlight: false,
+    cta: 'Start with Team',
+  },
 ]
 
-const FREE_FEATURES  = ['5 tracked repositories', '30-day history', 'Public profile & card', 'Weekly digest email']
-const FREE_LOCKED    = ['Real-time sync', 'Advanced analytics', 'API access', 'Priority support']
-const PRO_FEATURES   = ['Unlimited repositories', 'Full commit history', 'Real-time sync', 'Advanced analytics', 'API access', 'Priority support', 'Public profile & card', 'Weekly digest email']
+const COMPARE_ROWS = [
+  { label: 'Repositories tracked',  free: '5',       pro: '100',       team: '500'      },
+  { label: 'Commit history',        free: '30 days', pro: 'All time',  team: 'All time' },
+  { label: 'Sync interval',         free: '6h',      pro: '1h',        team: '1h'       },
+  { label: 'Advanced analytics',    free: false,     pro: true,        team: true       },
+  { label: 'API access',            free: false,     pro: true,        team: true       },
+  { label: 'Public profile & card', free: true,      pro: true,        team: true       },
+  { label: 'Weekly digest email',   free: true,      pro: true,        team: true       },
+  { label: 'Custom domain',         free: false,     pro: false,       team: true       },
+  { label: 'Priority support',      free: false,     pro: true,        team: true       },
+]
 
 export function PricingSection() {
   const [annual, setAnnual] = useState(false)
 
-  const monthlyPrice = 8
-  const annualMonthly = 6
-  const annualTotal = annualMonthly * 12
-
   return (
     <section id="pricing" className="px-6 py-28">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-5xl">
         <div className="mb-12 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-cyan-400">Pricing</p>
           <h2 className="text-4xl font-bold tracking-tight">Simple, transparent pricing</h2>
           <p className="mt-4 text-slate-500">Start free. Upgrade when you need more.</p>
 
           {/* Billing toggle */}
-          <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-border bg-surface p-1">
+          <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-border bg-surface p-1">
             <button
               onClick={() => setAnnual(false)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                 !annual ? 'bg-surface-2 text-slate-100' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
@@ -48,85 +99,81 @@ export function PricingSection() {
             </button>
             <button
               onClick={() => setAnnual(true)}
-              className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              className={`flex cursor-pointer items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                 annual ? 'bg-surface-2 text-slate-100' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
               Annual
               <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold text-cyan-400">
-                SAVE 25%
+                SAVE 20%
               </span>
             </button>
           </div>
         </div>
 
         {/* Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-stretch">
-          {/* Free card */}
-          <div className="relative flex flex-col rounded-2xl border border-border bg-surface p-7">
-            <div className="mb-5">
-              <h3 className="text-base font-bold text-slate-300">Free</h3>
-              <div className="mt-1 flex items-baseline gap-1">
-                <span className="tabular text-4xl font-black text-slate-100">$0</span>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 items-stretch">
+          {PLANS.map((plan) => {
+            const price = annual ? plan.yearly : plan.monthly
+            const monthlyEquivalent = annual && plan.yearly > 0 ? (plan.yearly / 12).toFixed(2) : null
+            return (
+              <div
+                key={plan.id}
+                className={`relative flex flex-col rounded-2xl border p-7 ${
+                  plan.highlight
+                    ? 'border-cyan-500/40 bg-gradient-to-b from-cyan-500/10 to-bg'
+                    : 'border-border bg-surface'
+                }`}
+              >
+                {plan.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 rounded-full bg-cyan-500 px-3 py-0.5 text-[11px] font-bold text-black tracking-wide">
+                    <Sparkles className="h-3 w-3" /> MOST POPULAR
+                  </div>
+                )}
+                <div className="mb-5">
+                  <h3 className={`text-base font-bold ${plan.highlight ? 'text-slate-100' : 'text-slate-300'}`}>
+                    {plan.name}
+                  </h3>
+                  <p className="mt-0.5 text-xs text-slate-500">{plan.description}</p>
+                  <div className="mt-3 flex items-baseline gap-1">
+                    <span className="tabular text-4xl font-black text-slate-100">${price}</span>
+                    <span className="text-slate-500">/{annual ? 'yr' : 'mo'}</span>
+                  </div>
+                  {monthlyEquivalent ? (
+                    <p className="mt-1 text-xs text-cyan-500">~${monthlyEquivalent}/mo billed yearly</p>
+                  ) : plan.id === 'FREE' ? (
+                    <p className="mt-1 text-xs text-slate-600">No credit card required</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-600">
+                      ${(plan.yearly / 12).toFixed(0)}/mo billed annually
+                    </p>
+                  )}
+                </div>
+                <ul className="mb-6 space-y-2.5">
+                  {plan.features.map((f) => (
+                    <li
+                      key={f}
+                      className={`flex items-center gap-2.5 text-sm ${
+                        plan.highlight ? 'text-slate-300' : 'text-slate-400'
+                      }`}
+                    >
+                      <Check
+                        className={`h-3.5 w-3.5 shrink-0 ${plan.highlight ? 'text-cyan-400' : 'text-slate-600'}`}
+                      />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  asChild
+                  variant={plan.highlight ? 'default' : 'outline'}
+                  className="mt-auto w-full cursor-pointer"
+                >
+                  <a href={`${API_URL}/api/v1/auth/github`}>{plan.cta}</a>
+                </Button>
               </div>
-              <p className="mt-1 text-xs text-slate-600">No credit card required</p>
-            </div>
-            <ul className="mb-6 space-y-2.5">
-              {FREE_FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm text-slate-400">
-                  <Check className="h-3.5 w-3.5 shrink-0 text-slate-600" />
-                  {f}
-                </li>
-              ))}
-              {FREE_LOCKED.map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm text-slate-700 line-through decoration-slate-800">
-                  <span className="h-3.5 w-3.5 shrink-0 text-center text-slate-800 leading-none">—</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Button asChild variant="outline" className="mt-auto w-full">
-              <a href={`${API_URL}/api/v1/auth/github`}>Get started free</a>
-            </Button>
-          </div>
-
-          {/* Pro card */}
-          <div className="relative flex flex-col rounded-2xl border border-cyan-500/40 bg-gradient-to-b from-cyan-500/10 to-bg p-7">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-cyan-500 px-3 py-0.5 text-[11px] font-bold text-black tracking-wide">
-              MOST POPULAR
-            </div>
-            <div className="mb-5">
-              <h3 className="text-base font-bold text-slate-300">Pro</h3>
-              <div className="mt-1 flex items-baseline gap-1">
-                <span className="tabular text-4xl font-black text-slate-100">
-                  ${annual ? annualMonthly : monthlyPrice}
-                </span>
-                <span className="text-slate-500">/mo</span>
-              </div>
-              {annual ? (
-                <p className="mt-1 text-xs text-cyan-500">
-                  Billed ${annualTotal}/yr — you save $24
-                </p>
-              ) : (
-                <p className="mt-1 text-xs text-slate-600">
-                  Or ${annualMonthly}/mo billed annually
-                </p>
-              )}
-            </div>
-            <ul className="mb-6 space-y-2.5">
-              {PRO_FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm text-slate-300">
-                  <Check className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Button asChild className="mt-auto w-full">
-              <a href={`${API_URL}/api/v1/auth/github`}>
-                {annual ? `Get Pro — $${annualTotal}/yr` : 'Get started'}
-              </a>
-            </Button>
-          </div>
+            )
+          })}
         </div>
 
         {/* Comparison table */}
@@ -137,28 +184,35 @@ export function PricingSection() {
                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-500">Feature</th>
                 <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-widest text-slate-500">Free</th>
                 <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-widest text-cyan-400">Pro</th>
+                <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-widest text-slate-300">Team</th>
               </tr>
             </thead>
             <tbody>
-              {COMPARE_ROWS.map(({ label, free, pro }, i) => (
-                <tr key={label} className={`border-b border-border last:border-0 ${i % 2 === 0 ? 'bg-surface' : 'bg-surface-2/50'}`}>
+              {COMPARE_ROWS.map(({ label, free, pro, team }, i) => (
+                <tr
+                  key={label}
+                  className={`border-b border-border last:border-0 ${i % 2 === 0 ? 'bg-surface' : 'bg-surface-2/50'}`}
+                >
                   <td className="px-5 py-3 text-slate-400">{label}</td>
                   <td className="px-5 py-3 text-center">
                     {typeof free === 'boolean' ? (
-                      free
-                        ? <Check className="mx-auto h-4 w-4 text-slate-500" />
-                        : <span className="text-slate-700">—</span>
+                      free ? <Check className="mx-auto h-4 w-4 text-slate-500" /> : <span className="text-slate-700">—</span>
                     ) : (
                       <span className="text-slate-500">{free}</span>
                     )}
                   </td>
                   <td className="px-5 py-3 text-center">
                     {typeof pro === 'boolean' ? (
-                      pro
-                        ? <Check className="mx-auto h-4 w-4 text-cyan-400" />
-                        : <span className="text-slate-700">—</span>
+                      pro ? <Check className="mx-auto h-4 w-4 text-cyan-400" /> : <span className="text-slate-700">—</span>
                     ) : (
                       <span className="font-medium text-cyan-400">{pro}</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3 text-center">
+                    {typeof team === 'boolean' ? (
+                      team ? <Check className="mx-auto h-4 w-4 text-slate-300" /> : <span className="text-slate-700">—</span>
+                    ) : (
+                      <span className="font-medium text-slate-300">{team}</span>
                     )}
                   </td>
                 </tr>
@@ -166,6 +220,10 @@ export function PricingSection() {
             </tbody>
           </table>
         </div>
+
+        <p className="mt-8 text-center text-[11px] text-slate-600">
+          All plans include unlimited public profile views · Cancel anytime · Secure payment via Stripe
+        </p>
       </div>
     </section>
   )
