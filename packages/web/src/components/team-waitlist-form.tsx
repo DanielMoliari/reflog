@@ -63,12 +63,12 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
             onChange={(e) => setEmail(e.target.value)}
             placeholder="seu@email.com"
             required
-            className="flex-1 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:border-violet-500/50 focus:outline-none"
+            className="flex-1 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
           />
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 hover:bg-violet-500 transition-colors disabled:opacity-60"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors disabled:opacity-60"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Entrar na waitlist <ArrowRight className="h-4 w-4" /></>}
           </button>
@@ -86,14 +86,14 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Seu nome"
-          className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-violet-500/50 focus:outline-none"
+          className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
         />
         <input
           type="text"
           value={company}
           onChange={(e) => setCompany(e.target.value)}
           placeholder="Empresa"
-          className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-violet-500/50 focus:outline-none"
+          className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
         />
       </div>
       <input
@@ -102,7 +102,7 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
         onChange={(e) => setEmail(e.target.value)}
         placeholder="email@empresa.com"
         required
-        className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-violet-500/50 focus:outline-none"
+        className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
       />
       <select
         value={teamSize}
@@ -119,7 +119,7 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
       <button
         type="submit"
         disabled={loading}
-        className="w-full cursor-pointer rounded-xl bg-violet-600 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 hover:bg-violet-500 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+        className="w-full cursor-pointer rounded-xl bg-accent py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Entrar na waitlist <ArrowRight className="h-4 w-4" /></>}
       </button>
