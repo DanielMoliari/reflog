@@ -149,3 +149,43 @@ export interface CodeHealth {
   grade: string
   breakdown: HealthBreakdown
 }
+
+export type TeamRole = 'ADMIN' | 'MANAGER' | 'MEMBER'
+
+export interface TeamMemberUser {
+  id: string
+  name: string
+  username: string | null
+  avatarUrl: string | null
+  plan: string
+}
+
+export interface TeamMember {
+  id: string
+  teamId: string
+  userId: string
+  role: TeamRole
+  joinedAt: string
+  user?: TeamMemberUser
+}
+
+export interface TeamInvite {
+  id: string
+  teamId: string
+  email: string
+  role: TeamRole
+  token: string
+  expiresAt: string
+  usedAt?: string
+  createdAt: string
+}
+
+export interface Team {
+  id: string
+  name: string
+  slug: string
+  ownerId: string
+  createdAt: string
+  updatedAt: string
+  members?: TeamMember[]
+}

@@ -31,6 +31,10 @@ type CodeHealthType {
   score: Float!
 }
 
+input CreateTeamInput {
+  name: String!
+}
+
 type DailyMetricsType {
   additions: Int!
   churnRatio: Float
@@ -108,6 +112,12 @@ type InsightsType {
   techGraduations: [TechGraduationType!]!
 }
 
+input InviteMemberInput {
+  email: String!
+  role: TeamRole!
+  teamId: String!
+}
+
 type LanguageBreakdownType {
   bytes: Int!
   name: String!
@@ -131,17 +141,23 @@ input MetricsRangeInput {
 }
 
 type Mutation {
+  acceptTeamInvite(token: String!): TeamType
+
   """Create a Stripe Checkout session for upgrading"""
   createCheckoutSession(interval: String!, plan: String!): CheckoutSessionType!
 
   """Open the Stripe customer portal for self-service billing"""
   createPortalSession: PortalSessionType!
+  createTeam(input: CreateTeamInput!): TeamType!
 
   """Permanently delete the authenticated user account and all data"""
   deleteAccount: Boolean!
+  deleteTeam(teamId: ID!): Boolean!
 
   """Re-import all GitHub repositories for the current user"""
   importFromGitHub: ImportResultType!
+  inviteToTeam(input: InviteMemberInput!): TeamInviteType!
+  removeTeamMember(teamId: ID!, userId: ID!): Boolean!
 
   """Send a test weekly digest email to the authenticated user"""
   sendTestDigest: Boolean!
@@ -166,6 +182,7 @@ type Mutation {
 
   """Update public profile visibility preferences"""
   updatePublicProfilePrefs(input: UpdatePublicProfilePrefsInput!): UserType!
+  updateTeamMemberRole(input: UpdateMemberRoleInput!): TeamMemberType!
 
   """Apply a streak freeze for today — max 3 lifetime"""
   useStreakFreeze: StreakType!
@@ -286,6 +303,7 @@ type Query {
 
   """Get daily metrics for a date range"""
   metrics(input: MetricsRangeInput!): [DailyMetricsType!]!
+  myTeams: [TeamType!]!
 
   """Compare today's metrics against all-time daily bests"""
   personalRecords: PersonalRecordsType!
@@ -306,6 +324,9 @@ type Query {
 
   """Get current streak stats"""
   streak: StreakType
+  team(id: ID!): TeamType!
+  teamInvites(teamId: ID!): [TeamInviteType!]!
+  teamMembers(teamId: ID!): [TeamMemberType!]!
 
   """User-wide tech graph: every tracked repo × every language it uses"""
   techGraph: TechGraphType!
@@ -445,6 +466,50 @@ enum SyncState {
   SYNCING
 }
 
+type TeamInviteType {
+  createdAt: DateTime!
+  email: String!
+  expiresAt: DateTime!
+  id: ID!
+  role: TeamRole!
+  teamId: String!
+  token: String!
+  usedAt: DateTime
+}
+
+type TeamMemberType {
+  id: ID!
+  joinedAt: DateTime!
+  role: TeamRole!
+  teamId: String!
+  user: TeamMemberUserType
+  userId: String!
+}
+
+type TeamMemberUserType {
+  avatarUrl: String
+  id: ID!
+  name: String!
+  plan: String!
+  username: String
+}
+
+enum TeamRole {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+type TeamType {
+  createdAt: DateTime!
+  id: ID!
+  members: [TeamMemberType!]
+  name: String!
+  ownerId: String!
+  slug: String!
+  updatedAt: DateTime!
+}
+
 type TechGraduationType {
   confidence: Float!
   from: String!
@@ -474,6 +539,12 @@ type TechGraphType {
 input UpdateAutoSyncPrefsInput {
   autoSyncEnabled: Boolean
   autoSyncIntervalHours: Int
+}
+
+input UpdateMemberRoleInput {
+  role: TeamRole!
+  teamId: String!
+  userId: String!
 }
 
 input UpdateNotificationPrefsInput {

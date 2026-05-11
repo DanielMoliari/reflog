@@ -477,6 +477,84 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Team section — for engineering managers / CTOs */}
+      <section id="team" className="px-6 py-24 border-t border-border">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-4 text-center">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-violet-400">Team Plan — Em breve</p>
+            <h2 className="text-4xl font-bold tracking-tight">Para engineering managers</h2>
+            <p className="mt-4 text-slate-500 max-w-2xl mx-auto">
+              Dados reais do GitHub — commits, PRs, reviews — agregados no nível do time.
+              Visibilidade sem microgerenciamento.
+            </p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {([
+              {
+                icon: '📊',
+                title: 'Team Dashboard',
+                desc: 'Leaderboard de commits, PRs e reviews por dev. Velocity chart do time ao longo do tempo. Heatmap coletivo de contribuição.',
+                color: 'border-violet-500/20 from-violet-500/5',
+              },
+              {
+                icon: '🚨',
+                title: 'Sinais de saúde',
+                desc: 'Burnout detector por dev. Concentration risk (um dev com >70% dos commits de um repo). Review bottlenecks e silos técnicos.',
+                color: 'border-rose-500/20 from-rose-500/5',
+              },
+              {
+                icon: '📄',
+                title: 'Relatórios executivos',
+                desc: 'Weekly Engineering Report em PDF para o board. Sprint retrospective com dados reais. Onboarding progress para novos devs.',
+                color: 'border-amber-500/20 from-amber-500/5',
+              },
+              {
+                icon: '🔐',
+                title: 'SSO & Admin controls',
+                desc: 'Integração com GitHub Org para import automático de membros. Roles: Admin, Manager, Member. Granularidade de privacidade por dev.',
+                color: 'border-cyan-500/20 from-cyan-500/5',
+              },
+              {
+                icon: '💬',
+                title: 'Integração Slack',
+                desc: 'Resumo semanal do time no canal de engenharia. Alertas de burnout em DM para o manager. Configurável por threshold.',
+                color: 'border-emerald-500/20 from-emerald-500/5',
+              },
+              {
+                icon: '📈',
+                title: 'Acompanhar evolução',
+                desc: 'Curva de contribuição de novos devs (30/60/90 dias). Tech debt signal por repo. Comparativo de velocity entre sprints.',
+                color: 'border-blue-500/20 from-blue-500/5',
+              },
+            ] as const).map((f) => (
+              <div
+                key={f.title}
+                className={`rounded-2xl border bg-gradient-to-b ${f.color} to-transparent p-6`}
+              >
+                <span className="text-3xl">{f.icon}</span>
+                <h3 className="mt-3 text-base font-bold text-slate-100">{f.title}</h3>
+                <p className="mt-2 text-sm text-slate-500 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-slate-400">
+              Preço a partir de <span className="font-semibold text-slate-200">$49/mês</span> para times de até 5 devs.
+              Não cobramos por seat.
+            </p>
+            <a
+              href="mailto:team@devpulse.dev?subject=Team Plan Waitlist"
+              className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 hover:bg-violet-500 transition-colors cursor-pointer"
+            >
+              Entrar na waitlist →
+            </a>
+            <p className="text-xs text-slate-600">Lançamento previsto para Q3 2026 · Sem cobrança até o lançamento</p>
+          </div>
+        </div>
+      </section>
+
       <PricingSection />
 
       {/* Final CTA */}

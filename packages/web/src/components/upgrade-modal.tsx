@@ -46,12 +46,13 @@ const PLANS = [
     name: 'Team',
     monthly: 0,
     yearly: 0,
-    description: 'Coming soon',
+    description: 'Para times de engenharia',
     features: [
       'Everything in Pro',
       'Team dashboard & leaderboard',
+      'Burnout detector & health signals',
       'Per-developer analytics',
-      'Engineering velocity reports',
+      'Weekly Engineering Report (PDF)',
       'SSO & admin controls',
     ],
     cta: 'Join waitlist',
@@ -178,7 +179,10 @@ export function UpgradeModal({ open, onOpenChange, currentPlan = 'FREE', headlin
                     <p className="text-xs text-slate-500">{plan.description}</p>
                     <div className="mt-4 flex items-baseline gap-1">
                       {isTeam ? (
-                        <span className="text-2xl font-bold text-slate-600">—</span>
+                        <div>
+                          <span className="text-2xl font-bold text-slate-600">—</span>
+                          <p className="mt-1 text-[11px] text-slate-600">Para times de 5–50 devs</p>
+                        </div>
                       ) : (
                         <>
                           <span className="text-3xl font-bold text-slate-100">${price}</span>
@@ -208,12 +212,12 @@ export function UpgradeModal({ open, onOpenChange, currentPlan = 'FREE', headlin
                           {plan.cta}
                         </button>
                       ) : isTeam ? (
-                        <button
-                          disabled
-                          className="w-full cursor-not-allowed rounded-md bg-surface-2 py-2 text-xs font-medium text-slate-600"
+                        <a
+                          href="mailto:team@devpulse.dev?subject=Team Plan Waitlist"
+                          className="block w-full cursor-pointer rounded-md bg-surface-2 py-2 text-center text-xs font-medium text-slate-400 transition-colors hover:bg-surface hover:text-slate-200"
                         >
-                          {plan.cta}
-                        </button>
+                          {plan.cta} →
+                        </a>
                       ) : plan.id === 'FREE' ? null : (
                         <Button
                           variant={plan.highlight ? 'default' : 'outline'}

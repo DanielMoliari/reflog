@@ -114,3 +114,47 @@ export const USE_STREAK_FREEZE = gql`
     }
   }
 `
+
+export const CREATE_TEAM = gql`
+  mutation CreateTeam($input: CreateTeamInput!) {
+    createTeam(input: $input) {
+      id name slug ownerId createdAt
+    }
+  }
+`
+
+export const INVITE_TO_TEAM = gql`
+  mutation InviteToTeam($input: InviteMemberInput!) {
+    inviteToTeam(input: $input) {
+      id email role expiresAt
+    }
+  }
+`
+
+export const REMOVE_TEAM_MEMBER = gql`
+  mutation RemoveTeamMember($teamId: ID!, $userId: ID!) {
+    removeTeamMember(teamId: $teamId, userId: $userId)
+  }
+`
+
+export const UPDATE_TEAM_MEMBER_ROLE = gql`
+  mutation UpdateTeamMemberRole($input: UpdateMemberRoleInput!) {
+    updateTeamMemberRole(input: $input) {
+      id userId role
+    }
+  }
+`
+
+export const DELETE_TEAM = gql`
+  mutation DeleteTeam($teamId: ID!) {
+    deleteTeam(teamId: $teamId)
+  }
+`
+
+export const ACCEPT_TEAM_INVITE = gql`
+  mutation AcceptTeamInvite($token: String!) {
+    acceptTeamInvite(token: $token) {
+      id name slug
+    }
+  }
+`

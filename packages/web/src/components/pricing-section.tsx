@@ -55,14 +55,15 @@ const PLANS: PlanRow[] = [
   {
     id: 'TEAM',
     name: 'Team',
-    description: 'Coming soon',
+    description: 'Para times de engenharia',
     monthly: 0,
     yearly: 0,
     features: [
       'Everything in Pro',
       'Team dashboard & leaderboard',
+      'Burnout detector & health signals',
       'Per-developer analytics',
-      'Engineering velocity reports',
+      'Weekly Engineering Report',
       'SSO & admin controls',
     ],
     highlight: false,
@@ -71,18 +72,19 @@ const PLANS: PlanRow[] = [
 ]
 
 const COMPARE_ROWS = [
-  { label: 'Repositories tracked',       free: 'All',        pro: 'All',         team: 'All'      },
-  { label: 'Commit history',             free: '90 days',    pro: 'All time',    team: 'All time' },
-  { label: 'Auto-sync interval',         free: '6h',         pro: '1h',          team: '1h'       },
-  { label: 'Year in Code recap',         free: false,        pro: true,          team: true       },
-  { label: 'Public profile & card',      free: true,         pro: true,          team: true       },
-  { label: 'Rank pills on profile',      free: false,        pro: true,          team: true       },
-  { label: 'Streak freezes',             free: '1 lifetime', pro: 'Unlimited',   team: 'Unlimited'},
-  { label: 'Weekly digest email',        free: true,         pro: true,          team: true       },
-  { label: 'Team dashboard',             free: false,        pro: false,         team: true       },
-  { label: 'Engineering velocity report',free: false,        pro: false,         team: true       },
-  { label: 'SSO & admin controls',       free: false,        pro: false,         team: true       },
-  { label: 'Priority support',           free: false,        pro: true,          team: true       },
+  { label: 'Repositories tracked',        free: 'All',        pro: 'All',         team: 'All'       },
+  { label: 'Commit history',              free: '90 days',    pro: 'All time',    team: 'All time'  },
+  { label: 'Auto-sync interval',          free: '6h',         pro: '1h',          team: '1h'        },
+  { label: 'Year in Code recap',          free: false,        pro: true,          team: true        },
+  { label: 'Public profile & card',       free: true,         pro: true,          team: true        },
+  { label: 'Rank pills on profile',       free: false,        pro: true,          team: true        },
+  { label: 'Streak freezes',              free: '1 lifetime', pro: 'Unlimited',   team: 'Unlimited' },
+  { label: 'Weekly digest email',         free: true,         pro: true,          team: true        },
+  { label: 'Team dashboard',              free: false,        pro: false,         team: true        },
+  { label: 'Burnout detector',            free: false,        pro: false,         team: true        },
+  { label: 'Engineering velocity report', free: false,        pro: false,         team: true        },
+  { label: 'SSO & admin controls',        free: false,        pro: false,         team: true        },
+  { label: 'Priority support',            free: false,        pro: true,          team: true        },
 ]
 
 export function PricingSection() {
@@ -185,16 +187,24 @@ export function PricingSection() {
                     </li>
                   ))}
                 </ul>
-                <Button
-                  asChild
-                  variant={plan.highlight ? 'default' : 'outline'}
-                  className="mt-auto w-full cursor-pointer"
-                  disabled={isTeam}
-                >
-                  <a href={isTeam ? '#' : `${API_URL}/api/v1/auth/github`}>
-                    {plan.cta}
+                {isTeam ? (
+                  <a
+                    href="mailto:team@devpulse.dev?subject=Team Plan Waitlist"
+                    className="mt-auto block w-full cursor-pointer rounded-md border border-border bg-surface-2 py-2 text-center text-sm font-medium text-slate-400 transition-colors hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-300"
+                  >
+                    {plan.cta} →
                   </a>
-                </Button>
+                ) : (
+                  <Button
+                    asChild
+                    variant={plan.highlight ? 'default' : 'outline'}
+                    className="mt-auto w-full cursor-pointer"
+                  >
+                    <a href={`${API_URL}/api/v1/auth/github`}>
+                      {plan.cta}
+                    </a>
+                  </Button>
+                )}
               </div>
             )
           })}

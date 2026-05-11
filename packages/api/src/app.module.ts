@@ -13,6 +13,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module'
 import { BillingModule } from './modules/billing/billing.module'
 import { NotificationsModule } from './modules/notifications/notifications.module'
 import { WebhooksModule } from './modules/webhooks/webhooks.module'
+import { TeamModule } from './modules/team/team.module'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 
@@ -49,6 +50,7 @@ import { AppService } from './app.service'
     BillingModule,
     NotificationsModule,
     WebhooksModule,
+    TeamModule,
   ],
   controllers: [AppController],
   providers: [AppService],

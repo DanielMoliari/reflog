@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useQuery } from '@apollo/client/react'
 import {
   LayoutDashboard,
   GitBranch,
@@ -11,26 +12,88 @@ import {
   PanelLeftOpen,
   X,
   Sparkles,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store/ui-store'
 import { Button } from '@/components/ui/button'
+import { ME_QUERY } from '@/graphql/queries'
+import type { User } from '@/graphql/types'
 
-const NAV = [
+const NAV_MAIN = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/repos', label: 'Repositories', icon: GitBranch },
   { href: '/streaks', label: 'Streaks', icon: Flame },
   { href: `/year/${new Date().getFullYear()}`, label: 'Year in Code', icon: Sparkles },
+]
+
+const NAV_BOTTOM = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 function NavLinks({ onLinkClick }: { onLinkClick?: () => void }) {
   const pathname = usePathname()
   const { sidebarOpen } = useUIStore()
+  const { data: meData } = useQuery<{ me: User }>(ME_QUERY)
+  const isTeamPlan = meData?.me?.plan === 'TEAM'
 
   return (
     <>
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {NAV_MAIN.map(({ href, label, icon: Icon }) => {
+        const active = pathname === href || pathname.startsWith(href + '/')
+        return (
+          <Link
+            key={href}
+            href={href}
+            onClick={onLinkClick}
+            title={!sidebarOpen ? label : undefined}
+            className={cn(
+              'flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors',
+              active
+                ? 'bg-accent-dim text-accent'
+                : 'text-slate-500 hover:bg-surface-2 hover:text-slate-200',
+              !sidebarOpen && 'justify-center px-0',
+            )}
+          >
+            <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-accent' : '')} />
+            {sidebarOpen && <span>{label}</span>}
+          </Link>
+        )
+      })}
+
+      {/* Team item */}
+      {(() => {
+        const href = '/team'
+        const active = pathname === href || pathname.startsWith(href + '/')
+        return (
+          <Link
+            href={href}
+            onClick={onLinkClick}
+            title={!sidebarOpen ? 'Team' : undefined}
+            className={cn(
+              'flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors',
+              active
+                ? 'bg-accent-dim text-accent'
+                : 'text-slate-500 hover:bg-surface-2 hover:text-slate-200',
+              !sidebarOpen && 'justify-center px-0',
+            )}
+          >
+            <Users className={cn('h-4 w-4 shrink-0', active ? 'text-accent' : '')} />
+            {sidebarOpen && (
+              <span className="flex flex-1 items-center gap-1.5 min-w-0">
+                <span className="truncate">Team</span>
+                {!isTeamPlan && (
+                  <span className="shrink-0 rounded-sm bg-violet-500/15 px-1 py-px text-[9px] font-bold uppercase tracking-wide text-violet-400">
+                    Soon
+                  </span>
+                )}
+              </span>
+            )}
+          </Link>
+        )
+      })()}
+
+      {NAV_BOTTOM.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(href + '/')
         return (
           <Link

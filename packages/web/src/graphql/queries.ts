@@ -206,6 +206,31 @@ export const PLATFORM_STATS_QUERY = gql`
   }
 `
 
+export const MY_TEAMS_QUERY = gql`
+  query MyTeams {
+    myTeams {
+      id name slug ownerId createdAt
+    }
+  }
+`
+
+export const TEAM_MEMBERS_QUERY = gql`
+  query TeamMembers($teamId: ID!) {
+    teamMembers(teamId: $teamId) {
+      id userId role joinedAt
+      user { id name username avatarUrl plan }
+    }
+  }
+`
+
+export const TEAM_INVITES_QUERY = gql`
+  query TeamInvites($teamId: ID!) {
+    teamInvites(teamId: $teamId) {
+      id email role expiresAt createdAt
+    }
+  }
+`
+
 export const REPOSITORY_DETAIL_QUERY = gql`
   query RepositoryDetail($id: ID!) {
     repositoryDetail(id: $id) {
