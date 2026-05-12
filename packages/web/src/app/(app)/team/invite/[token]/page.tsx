@@ -34,7 +34,6 @@ export default function AcceptInvitePage({ params }: PageProps) {
       }
     }
     void accept()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
   return (

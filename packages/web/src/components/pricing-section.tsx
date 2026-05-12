@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Check, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { TeamWaitlistForm } from '@/components/team-waitlist-form'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:17642'
 

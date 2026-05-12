@@ -145,7 +145,6 @@ export default function TeamDetailPage({ params }: PageProps) {
                 <div key={member.id} className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface-2 transition-colors">
                   <div className="h-8 w-8 shrink-0 rounded-full overflow-hidden border border-border bg-surface-2 flex items-center justify-center">
                     {member.user?.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={member.user.avatarUrl} alt={member.user.name ?? 'Avatar'} className="h-full w-full object-cover" />
                     ) : (
                       <span className="text-xs font-bold text-slate-500">
