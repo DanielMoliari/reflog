@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation } from '@apollo/client/react'
 import {
@@ -49,7 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'danger', label: 'Delete account', Icon: Trash2, danger: true },
 ]
 
-export default function SettingsPage() {
+function SettingsPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const openUpgradeModal = useUpgradeModalStore((s) => s.openModal)
@@ -569,5 +569,13 @@ export default function SettingsPage() {
       </nav>
       <div>{sectionContent[activeSection]()}</div>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense>
+      <SettingsPageInner />
+    </Suspense>
   )
 }
