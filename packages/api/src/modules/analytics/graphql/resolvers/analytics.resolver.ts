@@ -294,6 +294,11 @@ export class AnalyticsResolver {
     return this.analyticsService.importFromGitHub(user.sub)
   }
 
+  @Mutation(() => Int, { description: 'Unlock all locked repositories (PRO only)' })
+  async unlockAllRepositories(@CurrentUser() user: JwtPayload): Promise<number> {
+    return this.analyticsService.unlockAllRepositories(user.sub)
+  }
+
   @Mutation(() => Boolean, { description: 'Stop tracking a repository' })
   async untrackRepository(
     @CurrentUser() user: JwtPayload,

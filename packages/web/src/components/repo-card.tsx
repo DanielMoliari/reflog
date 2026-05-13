@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowUpRight, RefreshCw } from 'lucide-react'
+import { ArrowUpRight, RefreshCw, Lock, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,6 +14,8 @@ interface RepoCardProps {
   onToggleTrack: (id: string, tracked: boolean) => void
   onSync: (id: string) => void
   syncing?: boolean
+  isLocked?: boolean
+  onUpgrade?: () => void
 }
 
 function formatLines(n: number): string {
@@ -26,18 +28,46 @@ function formatLastPush(pushedAt?: string, lastSyncedAt?: string | null): string
   return formatRelative(iso)
 }
 
-export function RepoCard({ repo, maxCommits = 0, onToggleTrack, onSync, syncing }: RepoCardProps) {
+export function RepoCard({ repo, maxCommits = 0, onToggleTrack, onSync, syncing, isLocked = false, onUpgrade }: RepoCardProps) {
   const [owner, name] = repo.fullName.split('/')
 
   const hasMetrics = repo.isTracked && (repo.commitCount ?? 0) > 0
-  const isUntracked = !repo.isTracked
+  const isUntracked = !repo.isTracked && !isLocked
 
-  const cardOpacity = isUntracked ? 'opacity-50' : hasMetrics ? '' : 'opacity-60'
+  const cardOpacity = isLocked ? 'opacity-40' : isUntracked ? 'opacity-50' : hasMetrics ? '' : 'opacity-60'
 
   const barWidth =
     hasMetrics && maxCommits > 0
       ? Math.max(4, Math.round(((repo.commitCount ?? 0) / maxCommits) * 100))
       : 0
+
+  if (isLocked) {
+    return (
+      <div className={`group relative rounded-xl border border-border bg-surface p-4 ${cardOpacity}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className="text-xs text-slate-600">{owner}/</span>
+            <p className="truncate text-sm font-semibold text-slate-500">{name}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Lock className="h-3.5 w-3.5 text-slate-600" />
+            <button
+              onClick={onUpgrade}
+              className="cursor-pointer inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent hover:bg-accent/20 transition-colors"
+            >
+              <Sparkles className="h-2.5 w-2.5" /> PRO
+            </button>
+          </div>
+        </div>
+        {repo.language && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: languageColor(repo.language) }} />
+            <span className="text-xs text-slate-600">{repo.language}</span>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div

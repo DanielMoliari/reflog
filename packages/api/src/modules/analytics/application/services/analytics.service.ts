@@ -173,26 +173,29 @@ export class AnalyticsService {
 
     const user = await this.identityService.findById(userId)
     const limit = PLAN_LIMITS[user?.plan ?? 'FREE'].maxTrackedRepos
-    const reposToImport = limit !== null ? sorted.slice(0, limit) : sorted
 
     let imported = 0
     let tracked = 0
-    for (const ghRepo of reposToImport) {
+    for (let i = 0; i < sorted.length; i++) {
+      const ghRepo = sorted[i]
+      const isTracked = limit === null || i < limit
       const repo = await this.metricsRepo.upsertRepository({
         userId,
         githubRepoId: String(ghRepo.id),
         fullName: ghRepo.fullName,
         language: ghRepo.language,
         pushedAt: ghRepo.pushedAt,
-        isTracked: true,
+        isTracked,
         isPrivate: ghRepo.private,
       })
-      await this.enqueueSyncJob(userId, repo.id, repo.fullName)
-      tracked++
+      if (isTracked) {
+        await this.enqueueSyncJob(userId, repo.id, repo.fullName)
+        tracked++
+      }
       imported++
     }
 
-    this.logger.log(`Initial import for ${userId}: ${imported} repos imported and tracked (limit: ${limit ?? 'unlimited'})`)
+    this.logger.log(`Initial import for ${userId}: ${imported} repos imported, ${tracked} tracked (limit: ${limit ?? 'unlimited'})`)
     return { imported, tracked }
   }
 
@@ -218,10 +221,21 @@ export class AnalyticsService {
       language: target.language,
       pushedAt: target.pushedAt,
       isPrivate: target.private,
+      isTracked: true,
     })
 
     await this.enqueueSyncJob(userId, repo.id, repo.fullName)
     return repo
+  }
+
+  async unlockAllRepositories(userId: string): Promise<number> {
+    const repos = await this.metricsRepo.findRepositoriesByUser(userId, false)
+    const locked = repos.filter((r) => !r.isTracked)
+    for (const repo of locked) {
+      await this.metricsRepo.setRepositoryTracked(repo.id, true)
+      await this.enqueueSyncJob(userId, repo.id, repo.fullName)
+    }
+    return locked.length
   }
 
 

@@ -78,6 +78,12 @@ export const IMPORT_GITHUB_REPOSITORIES = gql`
   }
 `
 
+export const UNLOCK_ALL_REPOSITORIES = gql`
+  mutation UnlockAllRepositories {
+    unlockAllRepositories
+  }
+`
+
 export const CREATE_CHECKOUT_SESSION = gql`
   mutation CreateCheckoutSession($plan: String!, $interval: String!) {
     createCheckoutSession(plan: $plan, interval: $interval) {

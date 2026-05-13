@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ME_QUERY, REPOSITORIES_QUERY, TECH_GRAPH_QUERY, LANGUAGE_HISTORY_QUERY } from '@/graphql/queries'
-import { TRACK_REPOSITORY, UNTRACK_REPOSITORY, SYNC_REPOSITORY, IMPORT_GITHUB_REPOSITORIES } from '@/graphql/mutations'
+import { TRACK_REPOSITORY, UNTRACK_REPOSITORY, SYNC_REPOSITORY, IMPORT_GITHUB_REPOSITORIES, UNLOCK_ALL_REPOSITORIES } from '@/graphql/mutations'
 import type { Repository, User } from '@/graphql/types'
 import { languageColor } from '@/lib/utils'
 import { useUpgradeModalStore } from '@/store/upgrade-modal-store'
@@ -59,6 +59,9 @@ export default function ReposPage() {
     IMPORT_GITHUB_REPOSITORIES,
     { refetchQueries: [REPOSITORIES_QUERY] },
   )
+  const [unlockAll, { loading: unlocking }] = useMutation(UNLOCK_ALL_REPOSITORIES, {
+    refetchQueries: [REPOSITORIES_QUERY],
+  })
 
   function handleToggle(id: string, tracked: boolean) {
     if (tracked) {
@@ -76,6 +79,7 @@ export default function ReposPage() {
   const repos = data?.repositories ?? []
 
   const tracked = repos.filter((r) => r.isTracked).length
+  const locked = repos.filter((r) => !r.isTracked).length
   const isFree = meData?.me?.plan === 'FREE'
 
   // Collect unique languages from repos that have a primary language
@@ -181,9 +185,28 @@ export default function ReposPage() {
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3">
                   <h2 className="text-base font-semibold text-slate-100">Repositories</h2>
-                  <Badge variant="default">{tracked} tracked</Badge>
+                  <Badge variant="default">
+                    {tracked} tracked{locked > 0 ? ` of ${repos.length}` : ''}
+                  </Badge>
                 </div>
-                {isFree && (
+                {isFree && locked > 0 ? (
+                  <button
+                    onClick={() => openUpgradeModal('Desbloquear todos os repositórios')}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/15 transition-colors"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {locked} repos bloqueados → PRO
+                  </button>
+                ) : !isFree && locked > 0 ? (
+                  <button
+                    onClick={() => { void unlockAll() }}
+                    disabled={unlocking}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/15 transition-colors disabled:opacity-50"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {unlocking ? 'Desbloqueando…' : `Desbloquear ${locked} repos`}
+                  </button>
+                ) : isFree ? (
                   <button
                     onClick={() => openUpgradeModal('Ver histórico completo')}
                     className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/15 transition-colors"
@@ -191,7 +214,7 @@ export default function ReposPage() {
                     <Sparkles className="h-3.5 w-3.5" />
                     Histórico completo → PRO
                   </button>
-                )}
+                ) : null}
               </div>
 
               {/* Filters */}
@@ -289,6 +312,8 @@ export default function ReposPage() {
                         onToggleTrack={handleToggle}
                         onSync={handleSync}
                         syncing={syncing && currentSyncId === repo.id}
+                        isLocked={!repo.isTracked && isFree}
+                        onUpgrade={() => openUpgradeModal('Desbloquear todos os repositórios')}
                       />
                     ))}
               </div>
