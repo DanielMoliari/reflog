@@ -180,8 +180,8 @@ export function Sidebar() {
           className="flex shrink-0 items-center justify-center"
           style={{ width: 36, height: 36, background: '#060a0d', border: '1px solid #06b6d4', borderRadius: 7 }}
         >
-          <svg width="28" height="20" viewBox="0 0 28 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4,10 L8,10 L10,4 L14,16 L17,2 L20,10 L24,10" stroke="#06b6d4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#06b6d4" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />
           </svg>
         </div>
         {sidebarOpen && (

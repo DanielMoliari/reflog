@@ -6,9 +6,13 @@ DevPulse exposes two API surfaces:
 1. **GraphQL** — primary interface for the web dashboard (queries + mutations)
 2. **REST** — OAuth auth flow, Stripe webhook, and card image endpoint
 
-Base URL: `http://localhost:17642/api/v1`
-Swagger docs: `http://localhost:17642/api/docs`
-GraphQL endpoint: `http://localhost:17642/api/graphql`
+**Production:** `https://reflog-dev.duckdns.org`
+**Local dev:** `http://localhost:17642`
+
+| Environment | Base URL | GraphQL | Swagger |
+|---|---|---|---|
+| Production | `https://reflog-dev.duckdns.org/api/v1` | `https://reflog-dev.duckdns.org/api/graphql` | `https://reflog-dev.duckdns.org/api/docs` |
+| Local | `http://localhost:17642/api/v1` | `http://localhost:17642/api/graphql` | `http://localhost:17642/api/docs` |
 
 ---
 

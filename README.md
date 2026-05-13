@@ -71,6 +71,8 @@ Once running:
 - API (GraphQL Playground): http://localhost:17642/api/graphql
 - API (Swagger / REST docs): http://localhost:17642/api/docs
 
+**Production environment:** https://reflog-dev.duckdns.org
+
 ---
 
 ## Environment Variables

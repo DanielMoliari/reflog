@@ -1,14 +1,14 @@
 import Link from 'next/link'
 
-const LOGO_SVG = (
-  <svg width="22" height="16" viewBox="0 0 28 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M4,10 L8,10 L10,4 L14,16 L17,2 L20,10 L24,10"
-      stroke="#06b6d4"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+const LightningIcon = ({ size }: { size: 'sm' | 'md' }) => (
+  <svg
+    width={size === 'sm' ? 14 : 17}
+    height={size === 'sm' ? 14 : 17}
+    viewBox="0 0 24 24"
+    fill="#06b6d4"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />
   </svg>
 )
 
@@ -19,11 +19,7 @@ interface BrandLogoProps {
 
 export function BrandLogo({ href = '/', size = 'md' }: BrandLogoProps) {
   const iconSize = size === 'sm' ? { width: 28, height: 28 } : { width: 34, height: 34 }
-  const svgEl = size === 'sm' ? (
-    <svg width="18" height="13" viewBox="0 0 28 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M4,10 L8,10 L10,4 L14,16 L17,2 L20,10 L24,10" stroke="#06b6d4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ) : LOGO_SVG
+  const svgEl = <LightningIcon size={size} />
 
   const inner = (
     <div className="flex items-center gap-2">
