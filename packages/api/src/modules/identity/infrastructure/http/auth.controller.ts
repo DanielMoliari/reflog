@@ -86,14 +86,26 @@ export class AuthController {
     const { accessToken: jwt, user } = await this.identityService.loginWithGitHub(vo)
     void this.welcomeEmailService.maybeSendWelcome(user)
     const frontendUrl = this.frontendBaseUrl()
-    const intentParam = statePayload.intent ? `&intent=${encodeURIComponent(statePayload.intent)}` : ''
-    await reply.status(302).redirect(`${frontendUrl}/auth/callback?token=${jwt}${intentParam}`)
+    const isProduction = this.config.get<string>('NODE_ENV') === 'production'
+    // @fastify/cookie augments FastifyReply at runtime; cast to bypass stale type declarations
+    const r = reply as unknown as { setCookie: (name: string, value: string, opts: Record<string, unknown>) => void }
+    r.setCookie('auth_token', jwt, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 15 * 24 * 60 * 60,
+      path: '/',
+    })
+    const intentParam = statePayload.intent ? `?intent=${encodeURIComponent(statePayload.intent)}` : ''
+    await reply.status(302).redirect(`${frontendUrl}/auth/callback${intentParam}`)
   }
 
   @Get('logout')
-  @ApiOperation({ summary: 'Logout (client should discard JWT)' })
-  logout(): { message: string } {
-    return { message: 'Logged out. Discard your token on the client.' }
+  @ApiOperation({ summary: 'Clear auth cookie and log out' })
+  async logout(@Res() reply: FastifyReply): Promise<void> {
+    const r = reply as unknown as { clearCookie: (name: string, opts: Record<string, unknown>) => void }
+    r.clearCookie('auth_token', { path: '/' })
+    await reply.status(200).send({ message: 'Logged out' })
   }
 
   private async exchangeCodeForToken(code: string): Promise<string> {

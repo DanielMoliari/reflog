@@ -1,8 +1,7 @@
 import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client'
 import { CombinedGraphQLErrors } from '@apollo/client/errors'
-import { setContext } from '@apollo/client/link/context'
 import { onError } from '@apollo/client/link/error'
-import { getToken } from './auth'
+import { clearAuthenticated } from './auth'
 
 // In dev, attach the client to globalThis so Fast Refresh doesn't create a
 // new instance (with a fresh empty cache) on every hot reload — which would
@@ -11,20 +10,10 @@ declare const globalThis: typeof global & { __apolloClient?: ApolloClient }
 let _client: ApolloClient | null = null
 
 function buildClient() {
+  // credentials: 'include' sends the httpOnly auth_token cookie on every request
   const httpLink = createHttpLink({
     uri: `${process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:17642'}/api/graphql`,
-  })
-
-  // v4 legacy setter: (operation, prevContext) => updatedContext
-  const authLink = setContext((_op, prevContext) => {
-    const token = getToken()
-    const prev = prevContext as { headers?: Record<string, string> }
-    return {
-      headers: {
-        ...(prev.headers ?? {}),
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-      },
-    }
+    credentials: 'include',
   })
 
   const errorLink = onError(({ error }) => {
@@ -34,12 +23,13 @@ function buildClient() {
         )
       : error?.message?.includes('UNAUTHENTICATED') || error?.message?.includes('Unauthorized')
     if (typeof window !== 'undefined' && isUnauthenticated) {
+      clearAuthenticated()
       window.location.href = '/'
     }
   })
 
   return new ApolloClient({
-    link: from([errorLink, authLink, httpLink]),
+    link: from([errorLink, httpLink]),
     cache: new InMemoryCache(),
     defaultOptions: {
       watchQuery: { fetchPolicy: 'cache-and-network' },

@@ -25,7 +25,7 @@ import {
   UPDATE_AUTO_SYNC_PREFS,
 } from '@/graphql/mutations'
 import type { BillingStatus, User as UserType } from '@/graphql/types'
-import { clearToken } from '@/lib/auth'
+import { clearAuthenticated, logout } from '@/lib/auth'
 import { useUpgradeModalStore } from '@/store/upgrade-modal-store'
 
 type Section = 'profile' | 'connections' | 'billing' | 'notifications' | 'danger'
@@ -179,13 +179,13 @@ function SettingsPageInner() {
 
   async function handleDeleteAccount() {
     await deleteAccountMutation()
-    clearToken()
-    router.replace('/')
+    clearAuthenticated()
+    void logout().finally(() => router.replace('/'))
   }
 
   function handleDisconnect() {
-    clearToken()
-    window.location.href = '/'
+    clearAuthenticated()
+    void logout().finally(() => { window.location.href = '/' })
   }
 
   function handleCopyUrl() {

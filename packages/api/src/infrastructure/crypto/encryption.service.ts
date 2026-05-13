@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { createCipheriv, createDecipheriv, randomBytes, scrypt } from 'node:crypto'
-import { promisify } from 'node:util'
-
-const scryptAsync = promisify(scrypt)
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 
 @Injectable()
 export class EncryptionService {
@@ -12,15 +9,17 @@ export class EncryptionService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  private async getKey(): Promise<Buffer> {
+  private getKey(): Buffer {
     if (this.cachedKey) return this.cachedKey
-    const secret = this.configService.getOrThrow<string>('JWT_SECRET')
-    this.cachedKey = (await scryptAsync(secret, 'devpulse-v1', 32)) as Buffer
+    const hex = this.configService.getOrThrow<string>('ENCRYPTION_KEY')
+    const key = Buffer.from(hex, 'hex')
+    if (key.length !== 32) throw new Error('ENCRYPTION_KEY must be 64 hex chars (32 bytes)')
+    this.cachedKey = key
     return this.cachedKey
   }
 
   async encrypt(plaintext: string): Promise<string> {
-    const key = await this.getKey()
+    const key = this.getKey()
     const iv = randomBytes(12)
     const cipher = createCipheriv(this.algorithm, key, iv)
     const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
@@ -29,7 +28,7 @@ export class EncryptionService {
   }
 
   async decrypt(ciphertext: string): Promise<string> {
-    const key = await this.getKey()
+    const key = this.getKey()
     const parts = ciphertext.split(':')
     if (parts.length !== 3) throw new Error('Invalid ciphertext format')
     const [ivHex, authTagHex, encryptedHex] = parts as [string, string, string]

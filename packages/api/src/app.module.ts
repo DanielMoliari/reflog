@@ -35,6 +35,8 @@ import { AppService } from './app.service'
       sortSchema: true,
       playground: process.env['NODE_ENV'] !== 'production',
       introspection: process.env['NODE_ENV'] !== 'production',
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-call
+      validationRules: [(require('graphql-depth-limit') as (n: number) => never)(8)],
       // @as-integrations/fastify passes { request, reply } — passport-jwt only needs the request
       // expose as both `request` and `req` so guards/decorators can use either naming
       context: (ctx: { request?: unknown; req?: unknown }) => {

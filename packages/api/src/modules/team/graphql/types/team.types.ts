@@ -1,4 +1,5 @@
 import { ObjectType, Field, ID, registerEnumType, InputType } from '@nestjs/graphql'
+import { IsEmail, IsIn, IsOptional, MaxLength } from 'class-validator'
 
 export enum TeamRoleEnum {
   ADMIN = 'ADMIN',
@@ -100,6 +101,7 @@ export class TeamType {
 @InputType()
 export class CreateTeamInput {
   @Field()
+  @MaxLength(100)
   name: string
 }
 
@@ -151,17 +153,27 @@ export class WaitlistEntryType {
 @InputType()
 export class JoinWaitlistInput {
   @Field()
+  @IsEmail()
+  @MaxLength(254)
   email: string
 
   @Field({ nullable: true })
+  @IsOptional()
+  @MaxLength(100)
   name?: string
 
   @Field({ nullable: true })
+  @IsOptional()
+  @MaxLength(100)
   company?: string
 
   @Field({ nullable: true })
+  @IsOptional()
+  @MaxLength(20)
   teamSize?: string
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsIn(['twitter', 'github', 'google', 'friend', 'other', 'linkedin'])
   source?: string
 }

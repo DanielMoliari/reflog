@@ -9,7 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ME_QUERY, REPOSITORIES_QUERY } from '@/graphql/queries'
 import type { Repository, User as UserType } from '@/graphql/types'
-import { clearToken } from '@/lib/auth'
+import { clearAuthenticated, logout } from '@/lib/auth'
 import { useUIStore } from '@/store/ui-store'
 import { GlobalSearch } from '@/components/global-search'
 
@@ -184,8 +184,8 @@ export function NavHeader({ onSyncOpen }: NavHeaderProps) {
     : 'Sync'
 
   function handleLogout() {
-    clearToken()
-    window.location.href = '/'
+    clearAuthenticated()
+    void logout().finally(() => { window.location.href = '/' })
   }
 
   const user = data?.me

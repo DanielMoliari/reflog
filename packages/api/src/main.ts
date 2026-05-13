@@ -14,6 +14,9 @@ async function bootstrap() {
     { rawBody: true },
   )
 
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  await app.register(require('@fastify/cookie') as Parameters<typeof app.register>[0])
+
   // Security headers on every response
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
     const r = res as { setHeader: (k: string, v: string) => void }
