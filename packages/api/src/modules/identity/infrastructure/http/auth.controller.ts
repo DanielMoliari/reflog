@@ -39,11 +39,15 @@ export class AuthController {
 
   @Get('github')
   @ApiOperation({ summary: 'Initiate GitHub OAuth flow' })
-  async githubAuth(@Res() reply: FastifyReply): Promise<void> {
+  async githubAuth(
+    @Query('intent') intent: string | undefined,
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
     const clientId = this.config.getOrThrow<string>('GITHUB_CLIENT_ID')
     const callbackUrl = this.config.getOrThrow<string>('GITHUB_CALLBACK_URL')
     const scope = ['user:email', 'repo', 'read:org'].join(' ')
-    const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=${encodeURIComponent(scope)}`
+    const state = intent ? `intent:${intent}` : undefined
+    const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=${encodeURIComponent(scope)}${state ? `&state=${encodeURIComponent(state)}` : ''}`
     await reply.status(302).redirect(url)
   }
 
@@ -51,6 +55,7 @@ export class AuthController {
   @ApiOperation({ summary: 'GitHub OAuth callback' })
   async githubCallback(
     @Query('code') code: string,
+    @Query('state') state: string | undefined,
     @Res() reply: FastifyReply,
   ): Promise<void> {
     if (!code) throw new UnauthorizedException('Missing OAuth code')
@@ -67,10 +72,11 @@ export class AuthController {
     )
 
     const { accessToken: jwt, user } = await this.identityService.loginWithGitHub(vo)
-    // Fire-and-forget: sends welcome email only for brand-new accounts (createdAt < 2 min ago)
     void this.welcomeEmailService.maybeSendWelcome(user)
     const frontendUrl = this.frontendBaseUrl()
-    await reply.status(302).redirect(`${frontendUrl}/auth/callback?token=${jwt}`)
+    const intent = state?.startsWith('intent:') ? state.slice(7) : undefined
+    const intentParam = intent ? `&intent=${encodeURIComponent(intent)}` : ''
+    await reply.status(302).redirect(`${frontendUrl}/auth/callback?token=${jwt}${intentParam}`)
   }
 
   @Get('logout')

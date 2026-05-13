@@ -20,6 +20,7 @@ export interface RepoMetricsTotals {
 
 export interface IMetricsRepository {
   findRepositoriesByUser(userId: string, trackedOnly?: boolean): Promise<Repository[]>
+  countTrackedRepositories(userId: string): Promise<number>
   getRepoMetricsTotals(userId: string): Promise<RepoMetricsTotals[]>
   findRepositoryById(id: string): Promise<Repository | null>
   findRepositoryByGithubId(userId: string, githubRepoId: string): Promise<Repository | null>

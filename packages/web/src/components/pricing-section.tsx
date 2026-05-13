@@ -200,7 +200,7 @@ export function PricingSection() {
                     variant={plan.highlight ? 'default' : 'outline'}
                     className="mt-auto w-full cursor-pointer"
                   >
-                    <a href={`${API_URL}/api/v1/auth/github`}>
+                    <a href={`${API_URL}/api/v1/auth/github${plan.id === 'PRO' ? '?intent=pro' : ''}`}>
                       {plan.cta}
                     </a>
                   </Button>

@@ -14,6 +14,10 @@ export class PrismaMetricsRepository implements IMetricsRepository {
     })
   }
 
+  countTrackedRepositories(userId: string): Promise<number> {
+    return this.prisma.repository.count({ where: { userId, isTracked: true } })
+  }
+
   findRepositoryById(id: string): Promise<Repository | null> {
     return this.prisma.repository.findUnique({ where: { id } })
   }

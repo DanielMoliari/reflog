@@ -92,15 +92,20 @@ function SettingsPageInner() {
     setAutoSyncIntervalHours(user.autoSyncIntervalHours)
   }, [user])
 
-  // Handle ?billing=success / ?billing=canceled / ?tab=billing
+  // Handle ?billing=success / ?billing=canceled / ?tab=billing / ?checkout=pro
   useEffect(() => {
     const tab = searchParams.get('tab')
     const billing = searchParams.get('billing')
-    if (tab === 'billing' || billing === 'success' || billing === 'canceled') {
+    const checkout = searchParams.get('checkout')
+    if (tab === 'billing' || billing === 'success' || billing === 'canceled' || checkout) {
       setActiveSection('billing')
       if (billing) router.replace('/settings')
     }
-  }, [searchParams, router])
+    if (checkout === 'pro' && user?.plan === 'FREE') {
+      router.replace('/settings?tab=billing')
+      openUpgradeModal()
+    }
+  }, [searchParams, router, user?.plan, openUpgradeModal])
 
   function handleSave() {
     void updateProfile({ variables: { input: { name: name || undefined } } })

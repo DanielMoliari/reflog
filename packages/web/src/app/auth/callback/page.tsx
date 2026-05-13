@@ -13,9 +13,14 @@ function CallbackInner() {
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
     const token = params.get('token') ?? urlParams?.get('token') ?? null
     const error = params.get('error') ?? urlParams?.get('error') ?? null
+    const intent = params.get('intent') ?? urlParams?.get('intent') ?? null
     if (token) {
       setToken(token)
-      setTimeout(() => window.location.replace('/dashboard'), 2500)
+      if (intent === 'pro') {
+        setTimeout(() => window.location.replace('/settings?tab=billing&checkout=pro'), 2500)
+      } else {
+        setTimeout(() => window.location.replace('/dashboard'), 2500)
+      }
     } else {
       router.replace(`/?error=${error ?? 'auth_failed'}`)
     }

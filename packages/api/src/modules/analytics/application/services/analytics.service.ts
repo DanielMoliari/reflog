@@ -171,9 +171,13 @@ export class AnalyticsService {
       return bt - at
     })
 
+    const user = await this.identityService.findById(userId)
+    const limit = PLAN_LIMITS[user?.plan ?? 'FREE'].maxTrackedRepos
+    const reposToImport = limit !== null ? sorted.slice(0, limit) : sorted
+
     let imported = 0
     let tracked = 0
-    for (const ghRepo of sorted) {
+    for (const ghRepo of reposToImport) {
       const repo = await this.metricsRepo.upsertRepository({
         userId,
         githubRepoId: String(ghRepo.id),
@@ -188,11 +192,20 @@ export class AnalyticsService {
       imported++
     }
 
-    this.logger.log(`Initial import for ${userId}: ${imported} repos imported and tracked`)
+    this.logger.log(`Initial import for ${userId}: ${imported} repos imported and tracked (limit: ${limit ?? 'unlimited'})`)
     return { imported, tracked }
   }
 
   async trackRepository(userId: string, githubRepoId: string): Promise<Repository> {
+    const user = await this.identityService.findById(userId)
+    const limit = PLAN_LIMITS[user?.plan ?? 'FREE'].maxTrackedRepos
+    if (limit !== null) {
+      const currentCount = await this.metricsRepo.countTrackedRepositories(userId)
+      if (currentCount >= limit) {
+        throw new ForbiddenException(`Free plan is limited to ${limit} tracked repositories. Upgrade to Pro for unlimited.`)
+      }
+    }
+
     const accessToken = await this.identityService.getDecryptedToken(userId)
     const repos = await this.github.getUserRepositories(accessToken)
     const target = repos.find((r) => String(r.id) === githubRepoId)

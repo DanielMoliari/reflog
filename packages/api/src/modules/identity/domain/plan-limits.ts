@@ -3,7 +3,7 @@
 // (or layering Stripe metadata on top later) only requires touching this file.
 export const PLAN_LIMITS = {
   FREE: {
-    maxTrackedRepos: null,   // null = unlimited
+    maxTrackedRepos: 10,     // FREE gets 10 tracked repos
     historyDays: 90,         // 90-day rolling window on metrics queries
     weeklyDigest: true,
     publicProfile: true,
