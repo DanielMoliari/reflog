@@ -20,6 +20,7 @@ import {
   UPDATE_PUBLIC_PROFILE_PREFS,
   DELETE_ACCOUNT,
   CREATE_PORTAL_SESSION,
+  CREATE_CHECKOUT_SESSION,
   UPDATE_AUTO_SYNC_PREFS,
 } from '@/graphql/mutations'
 import type { BillingStatus, User as UserType } from '@/graphql/types'
@@ -64,6 +65,7 @@ function SettingsPageInner() {
   const [updatePublicProfilePrefs, { loading: savingVis }] = useMutation(UPDATE_PUBLIC_PROFILE_PREFS, { refetchQueries: [ME_QUERY] })
   const [updateAutoSync, { loading: savingAutoSync }] = useMutation(UPDATE_AUTO_SYNC_PREFS, { refetchQueries: [ME_QUERY] })
   const [createPortalSession, { loading: loadingPortal }] = useMutation<{ createPortalSession: { url: string } }>(CREATE_PORTAL_SESSION)
+  const [createCheckout] = useMutation<{ createCheckoutSession: { url: string } }>(CREATE_CHECKOUT_SESSION)
   const [deleteAccountMutation, { loading: deleting }] = useMutation(DELETE_ACCOUNT)
 
   const user = data?.me
@@ -101,11 +103,17 @@ function SettingsPageInner() {
       setActiveSection('billing')
       if (billing) router.replace('/settings')
     }
-    if (checkout === 'pro' && user?.plan === 'FREE') {
+    if (checkout === 'pro' && !loading && user?.plan === 'FREE') {
       router.replace('/settings?tab=billing')
-      openUpgradeModal()
+      void createCheckout({ variables: { plan: 'PRO', interval: 'monthly' } }).then(({ data }) => {
+        if (data?.createCheckoutSession?.url) {
+          window.location.href = data.createCheckoutSession.url
+        } else {
+          openUpgradeModal()
+        }
+      }).catch(() => openUpgradeModal())
     }
-  }, [searchParams, router, user?.plan, openUpgradeModal])
+  }, [searchParams, router, loading, user?.plan, createCheckout, openUpgradeModal])
 
   function handleSave() {
     void updateProfile({ variables: { input: { name: name || undefined } } })
