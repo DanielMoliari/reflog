@@ -87,6 +87,17 @@ export class BillingService {
         return
       }
       const plan = planRaw as Plan
+      let currentPeriodEnd: Date | null = null
+      let resolvedInterval = interval ?? 'monthly'
+      if (session.subscription) {
+        try {
+          const sub = await this.billing.retrieveSubscription(session.subscription)
+          currentPeriodEnd = sub.currentPeriodEnd
+          if (sub.interval) resolvedInterval = sub.interval
+        } catch (e) {
+          this.logger.warn(`Could not retrieve subscription ${session.subscription}: ${String(e)}`)
+        }
+      }
       await this.prisma.user.update({
         where: { id: userId },
         data: {
@@ -94,7 +105,8 @@ export class BillingService {
           stripeSubscriptionId: session.subscription ?? null,
           subscriptionStatus: 'active',
           plan,
-          billingInterval: interval ?? 'monthly',
+          billingInterval: resolvedInterval,
+          ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
         },
       })
       this.logger.log(`User ${userId} upgraded to ${plan}`)

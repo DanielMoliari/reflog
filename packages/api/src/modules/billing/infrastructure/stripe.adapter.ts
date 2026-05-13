@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import StripeCtor = require('stripe')
-import type { CheckoutSessionInput, IBillingPort } from '../ports/billing.port'
+import type { CheckoutSessionInput, IBillingPort, StripeSubscriptionData } from '../ports/billing.port'
 
 // `import = require(...)` works for `export =` modules without esModuleInterop.
 // StripeCtor is both the constructor and a namespace exposing the Stripe type.
@@ -52,6 +52,17 @@ export class StripeAdapter implements IBillingPort {
     })
     if (!session.url) throw new Error('Stripe did not return a checkout URL')
     return { url: session.url, sessionId: session.id }
+  }
+
+  async retrieveSubscription(subscriptionId: string): Promise<StripeSubscriptionData> {
+    const sub = await this.client.subscriptions.retrieve(subscriptionId)
+    const interval = sub.items.data[0]?.price?.recurring?.interval
+    return {
+      status: sub.status,
+      currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+      cancelAtPeriodEnd: sub.cancel_at_period_end,
+      interval: interval === 'year' ? 'yearly' : interval === 'month' ? 'monthly' : null,
+    }
   }
 
   async createPortalSession(customerId: string, returnUrl: string): Promise<{ url: string }> {
