@@ -1,8 +1,9 @@
-import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { ForbiddenException, Inject, Injectable, Logger, NotFoundException, forwardRef } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Plan } from '@prisma/client'
 import { PrismaService } from '../../../../infrastructure/database/prisma.service'
 import { BILLING_PORT, type IBillingPort } from '../../ports/billing.port'
+import { AnalyticsService } from '../../../analytics/application/services/analytics.service'
 
 interface StripeCheckoutSessionLike {
   client_reference_id?: string | null
@@ -30,6 +31,7 @@ export class BillingService {
     @Inject(BILLING_PORT) private readonly billing: IBillingPort,
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Inject(forwardRef(() => AnalyticsService)) private readonly analyticsService: AnalyticsService,
   ) {}
 
   isConfigured(): boolean {
@@ -110,6 +112,10 @@ export class BillingService {
         },
       })
       this.logger.log(`User ${userId} upgraded to ${plan}`)
+      // Re-import all repos now that the plan has changed — unlocks previously locked repos
+      void this.analyticsService.importFromGitHub(userId).catch((e) =>
+        this.logger.warn(`Post-upgrade importFromGitHub failed for ${userId}: ${String(e)}`),
+      )
       return
     }
 
