@@ -177,7 +177,7 @@ export class AnalyticsService {
     let imported = 0
     let tracked = 0
     for (let i = 0; i < sorted.length; i++) {
-      const ghRepo = sorted[i]
+      const ghRepo = sorted[i]!
       const isTracked = limit === null || i < limit
       const repo = await this.metricsRepo.upsertRepository({
         userId,

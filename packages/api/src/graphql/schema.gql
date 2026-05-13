@@ -179,6 +179,9 @@ type Mutation {
   """Start tracking a GitHub repository"""
   trackRepository(githubRepoId: String!): RepositoryType!
 
+  """Unlock all locked repositories (PRO only)"""
+  unlockAllRepositories: Int!
+
   """Stop tracking a repository"""
   untrackRepository(id: ID!): Boolean!
 
