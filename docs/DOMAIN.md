@@ -2,315 +2,176 @@
 
 ## Overview
 
-DevPulse follows Domain-Driven Design (DDD) principles, organized into four bounded contexts that reflect real business boundaries. Each context owns its data, has an explicit public interface, and communicates with other contexts only via domain events.
+DevPulse follows Domain-Driven Design (DDD) principles organized into five bounded contexts. Each context owns its data and communicates with others via application service calls (NestJS DI) rather than direct DB coupling.
 
 ---
 
 ## Bounded Contexts
 
 ### 1. Identity Context
-**Responsibility:** User accounts, GitHub OAuth, session management, and access control.
+**Responsibility:** User accounts, GitHub OAuth, session management, plan assignment, public profile opt-in.
 
-**Owns:**
-- User registration and authentication via GitHub OAuth
-- Token storage and refresh
-- Plan/subscription status per user
-- Session issuance (JWT)
+**Owns:** User registration and authentication, GitHub token storage (encrypted), plan/subscription status, `publicProfile` opt-in flag, `username` (public handle).
 
-**Public interface (Anti-Corruption Layer):**
-- Publishes `UserConnectedGitHub`, `UserDisconnectedGitHub`
-- Exposes `UserId` value object consumed by all other contexts
+**Key services:** `IdentityService`, `GitHubStrategy`, `JwtStrategy`, `PrismaUserRepository`
 
 ---
 
 ### 2. Analytics Context
 **Responsibility:** Aggregating and serving developer productivity metrics from GitHub activity.
 
-**Owns:**
-- Repository tracking configuration
-- Daily metrics ingestion (commits, additions, deletions, PRs, reviews)
-- Streak calculation and maintenance
-- Historical data querying
+**Owns:** Repository tracking configuration, daily metrics ingestion (`DailyMetrics`), streak calculation (`Streak`), tech graph, language history, hourly activity, repo insights, public profile assembly.
 
-**Public interface:**
-- Publishes `RepositorySynced`, `StreakUpdated`, `StreakBroken`
-- Consumes `UserConnectedGitHub` to initialize repository sync
+**Key services:** `AnalyticsService`, `SyncRepositoryProcessor`, `StreakService`, `PublicProfileService`, `GitHubLookupService`
 
 ---
 
 ### 3. Notifications Context
-**Responsibility:** Weekly digest generation, streak alerts, and milestone notifications.
+**Responsibility:** Weekly digest generation, streak alert emails.
 
-**Owns:**
-- Digest scheduling and delivery
-- Alert rules (streak at risk, PR review pending)
-- Notification preferences per user
+**Owns:** Digest scheduling and delivery (Resend), notification preferences per user (`streakAlertsEnabled`, `weeklyDigestEnabled`).
 
-**Public interface:**
-- Publishes `DigestSent`, `AlertTriggered`
-- Consumes `StreakBroken`, `RepositorySynced`, `WeekBoundaryReached`
+**Key services:** `DigestService`, `ResendAdapter`
 
 ---
 
 ### 4. Billing Context
-**Responsibility:** Plan management, subscription lifecycle, and feature gating.
+**Responsibility:** Stripe subscription lifecycle, plan upgrades, feature gating.
 
-**Owns:**
-- Plan definitions (Free, Pro, Team)
-- Subscription state per user
-- Usage limit enforcement
+**Owns:** Stripe customer/subscription IDs, `subscriptionStatus`, `currentPeriodEnd`, `billingInterval` on User.
 
-**Public interface:**
-- Publishes `PlanUpgraded`, `PlanDowngraded`, `TrialExpired`
-- Consumes `UserConnectedGitHub` to initialize free plan
+**Key services:** `BillingService`, `StripeAdapter` (lazy init — boots without keys)
 
 ---
 
-## Aggregates
+### 5. Webhooks Context
+**Responsibility:** Receiving GitHub push/PR events and routing them to sync jobs.
 
-### User Aggregate
-**Root:** `User`
-**Cluster:** `User` + `GitHubProfile` + `StreakRecord`
+**Owns:** `Webhook` table schema (populated if webhook registration is ever implemented).
 
-```
-User
-├── id: UserId
-├── email: Email (optional)
-├── name: string
-├── plan: Plan (FREE | PRO | TEAM)
-├── createdAt: Date
-├── githubProfile: GitHubProfile        ← Value Object
-└── streak: StreakRecord                 ← Value Object
-```
+**Key services:** `GitHubEventProcessor`, `WebhooksController`
 
-**Invariants:**
-- A user must have a valid `GitHubProfile` before any analytics are collected
-- A user on `FREE` plan cannot track more than 3 repositories
-- `streak.lastActiveDate` must never be in the future
-
-**Methods:**
-- `connectGitHub(profile: GitHubProfile): UserConnectedGitHub`
-- `disconnectGitHub(): UserDisconnectedGitHub`
-- `upgradePlan(plan: Plan): PlanUpgraded`
+**Note:** Receiver is functional; GitHub webhook registration at repo-track time is not implemented. `Webhook` table is always empty. Sync is cron/manual-only.
 
 ---
 
-### Repository Aggregate
-**Root:** `Repository`
-**Cluster:** `Repository` + `SyncState`
+## Prisma Schema (source of truth)
 
+### User
 ```
-Repository
-├── id: RepositoryId
-├── userId: UserId
-├── githubRepoId: string
-├── fullName: string          ← "owner/repo"
-├── language: string | null
-├── isTracked: boolean
-├── lastSyncedAt: Date | null
-└── syncState: SyncState      ← Value Object (IDLE | SYNCING | ERROR)
+id, email, name, avatarUrl, githubId, githubUsername, username (public handle)
+encryptedGithubToken, plan (FREE|PRO|TEAM)
+publicProfile, publicShowStreak, publicShowRepos
+streakAlertsEnabled, weeklyDigestEnabled
+autoSyncEnabled, autoSyncIntervalHours
+stripeCustomerId, stripeSubscriptionId, subscriptionStatus, currentPeriodEnd, billingInterval
+createdAt, updatedAt
 ```
 
-**Invariants:**
-- `fullName` must match the pattern `owner/repo`
-- A repository can only be tracked by the user who added it
-- `lastSyncedAt` is null until first successful sync
+### Repository
+```
+id, userId, githubRepoId, fullName, description, language
+isTracked, isPrivate, stars, forks, pushedAt
+syncState (IDLE|SYNCING|ERROR), lastSyncedAt
+createdAt, updatedAt
+```
 
-**Methods:**
-- `startTracking(): void`
-- `stopTracking(): void`
-- `recordSync(syncedAt: Date): RepositorySynced`
-- `recordSyncError(error: string): void`
+### DailyMetrics
+```
+id, userId, repoId, date
+commits, additions, deletions, prsOpened, prsMerged, reviewsDone
+UNIQUE (userId, repoId, date)   ← enables idempotent incremental upsert
+```
+
+### Streak
+```
+id, userId (unique)
+currentStreak, longestStreak, lastActiveDate, freezesUsed
+```
+
+### WeeklyDigest
+```
+id, userId, weekStart (unique per user)
+summary (JSON), sentAt
+```
+
+### Team / TeamMember / TeamInvite
+Schema exists with `Team`, `TeamMember` (roles: ADMIN|MANAGER|MEMBER), `TeamInvite`. No application logic or UI implemented — waitlist only.
+
+### WaitlistEntry
+```
+id, email (unique), name, company, teamSize, source, createdAt
+```
+
+### Webhook
+```
+id, repoId, githubHookId, events, secret, active
+```
+Schema exists; table is always empty (no registration code).
 
 ---
 
-### DailyMetrics Aggregate
-**Root:** `DailyMetrics`
-**Cluster:** `DailyMetrics` + `CommitStats` + `ReviewStats`
+## Plan Limits (domain object)
 
-```
-DailyMetrics
-├── id: MetricsId
-├── userId: UserId
-├── repositoryId: RepositoryId | null  ← null = cross-repo aggregate
-├── date: CalendarDate
-├── commitStats: CommitStats            ← Value Object
-└── reviewStats: ReviewStats            ← Value Object
-```
+Single source of truth: `packages/api/src/modules/identity/domain/plan-limits.ts`
 
-**Invariants:**
-- Only one `DailyMetrics` record per `(userId, repositoryId, date)` tuple
-- All numeric fields must be >= 0
-- `date` must not be in the future
-
----
-
-### WeeklyDigest Aggregate
-**Root:** `WeeklyDigest`
-
-```
-WeeklyDigest
-├── id: DigestId
-├── userId: UserId
-├── weekStart: CalendarDate   ← always a Monday
-├── summary: DigestSummary    ← Value Object
-└── sentAt: Date | null
-```
-
-**Invariants:**
-- Only one digest per `(userId, weekStart)` pair
-- `sentAt` is set once and never updated
-- `weekStart` must be a Monday
-
----
-
-## Value Objects
-
-### GitHubProfile
 ```typescript
-interface GitHubProfile {
-  readonly githubId: string
-  readonly username: string
-  readonly avatarUrl: string
-  readonly profileUrl: string
-  readonly accessToken: string      // AES-256-GCM encrypted at rest
-  readonly scopes: readonly string[]
-  readonly tokenExpiresAt: Date | null
+export const PLAN_LIMITS = {
+  FREE:  { maxTrackedRepos: 10,   historyDays: 90,   streakFreezes: 1,    yearInCode: false, rankPills: false },
+  PRO:   { maxTrackedRepos: null, historyDays: null,  streakFreezes: null, yearInCode: true,  rankPills: true  },
+  TEAM:  { maxTrackedRepos: null, historyDays: null,  streakFreezes: null, yearInCode: true,  rankPills: true  },
 }
 ```
-**Equality:** by `githubId`
-**Validation:** `githubId` must be non-empty; `username` must match `/^[a-zA-Z0-9-]+$/`
+
+`null` means unlimited. `historyDays` is enforced in `AnalyticsService.getDashboardMetrics` and the `metrics` GraphQL resolver. `streakFreezes` is compared against `Streak.freezesUsed` in `useStreakFreeze` mutation.
 
 ---
 
-### CommitStats
-```typescript
-interface CommitStats {
-  readonly count: number        // total commits that day
-  readonly additions: number    // lines added
-  readonly deletions: number    // lines deleted
-  readonly repositories: number // distinct repos with commits
-}
-```
-**Equality:** structural
-**Derived:** `churnRatio = deletions / (additions + deletions)` — values in [0, 1]
+## Key Domain Logic
 
----
+### Streak Calculation (`StreakCalculator`)
+Pure TypeScript class with no framework dependencies. Given a sorted array of active dates:
+- Counts consecutive days from today backwards (gap tolerance: 1 day)
+- Returns `currentStreak`, `longestStreak`
+- Triggered after every `SyncRepositoryProcessor` completion via `StreakService.recalculate`
 
-### ReviewStats
-```typescript
-interface ReviewStats {
-  readonly prsOpened: number
-  readonly prsMerged: number
-  readonly reviewsDone: number
-  readonly commentsLeft: number
-  readonly reviewCycleAvgHours: number | null
-}
-```
-**Equality:** structural
+### Burnout Signal
+Computed in `AnalyticsService.getInsights`. Looks at the trailing 14 days:
+- `atRisk: true` when `consecutiveDays ≥ 14` AND `netLinesTrend < 0` (declining output)
+- Returns `consecutiveDays`, `netLinesTrend` (float), `message` (string), `atRisk` (boolean)
 
----
+### Tech Graduation Detection
+Detects language migration events (e.g., JavaScript → TypeScript). Compares year-over-year byte share per language. A "graduation" is detected when a language's share drops by ≥ 30% while a related language grows by ≥ 30% in the same period. Returns confidence score 0–1.
 
-### StreakRecord
-```typescript
-interface StreakRecord {
-  readonly currentStreak: number   // consecutive active days
-  readonly longestStreak: number   // all-time record
-  readonly lastActiveDate: Date | null
-  readonly freezesRemaining: number // Pro feature — skip a day
-}
-```
-**Equality:** by `currentStreak + lastActiveDate`
-**Invariant:** `currentStreak <= longestStreak`
+### Public Profile Assembly (`PublicProfileService`)
+1. Checks `user.publicProfile` — returns `null` if `false` (private by default)
+2. Assembles: streak (if `publicShowStreak`), tracked public repos (if `publicShowRepos`), top 5 languages from tech graph, 365-day heatmap, all-time commit/lines/PR totals, rank pills (gated on `userCount ≥ 10`)
+3. Caches at `public-profile:{username}` with 5m TTL
 
----
-
-## Domain Events
-
-All events are immutable, named in past tense, and carry enough data for any subscriber to act without additional queries.
-
-### UserConnectedGitHub
-```typescript
-interface UserConnectedGitHub {
-  readonly eventType: 'UserConnectedGitHub'
-  readonly occurredAt: Date
-  readonly userId: string
-  readonly githubUsername: string
-  readonly githubId: string
-  readonly scopes: string[]
-}
-```
-**Triggers:** Analytics context initializes repository discovery; Billing context assigns free plan.
-
----
-
-### RepositorySynced
-```typescript
-interface RepositorySynced {
-  readonly eventType: 'RepositorySynced'
-  readonly occurredAt: Date
-  readonly userId: string
-  readonly repositoryId: string
-  readonly fullName: string
-  readonly syncedDateRange: { from: Date; to: Date }
-  readonly metricsIngested: number
-}
-```
-**Triggers:** Streak recalculation; digest data refresh.
-
----
-
-### StreakBroken
-```typescript
-interface StreakBroken {
-  readonly eventType: 'StreakBroken'
-  readonly occurredAt: Date
-  readonly userId: string
-  readonly brokenStreakLength: number
-  readonly lastActiveDate: Date
-}
-```
-**Triggers:** Notifications context sends streak-broken alert.
-
----
-
-### DigestSent
-```typescript
-interface DigestSent {
-  readonly eventType: 'DigestSent'
-  readonly occurredAt: Date
-  readonly userId: string
-  readonly digestId: string
-  readonly weekStart: Date
-  readonly channel: 'email' | 'webhook'
-}
-```
-**Triggers:** Analytics context marks digest as delivered.
+### Personal Records
+`getPersonalRecords` queries `MAX(commits)`, `MAX(additions)`, `MAX(netLines)` across all `DailyMetrics` for the user. Frontend compares against today's values post-sync and shows a trophy toast if any record is broken.
 
 ---
 
 ## Context Map
 
 ```
-┌─────────────────┐       UserConnectedGitHub        ┌──────────────────┐
-│  Identity       │ ──────────────────────────────► │  Analytics       │
-│  Context        │                                  │  Context         │
-│                 │ ◄────────────────────────────── │                  │
-└─────────────────┘       (UserId lookups via ACL)   └────────┬─────────┘
-        │                                                     │
-        │ PlanUpgraded                          RepositorySynced
-        ▼                                       StreakBroken
-┌─────────────────┐                             │
-│  Billing        │                             ▼
-│  Context        │              ┌──────────────────────┐
-│                 │              │  Notifications       │
-│                 │              │  Context             │
-└─────────────────┘              │                      │
-                                 └──────────────────────┘
+┌─────────────────┐                              ┌──────────────────┐
+│  Identity       │ ── user lookup / token ────► │  Analytics       │
+│  Context        │                              │  Context         │
+│                 │ ◄── publicProfile data ───── │                  │
+└─────────────────┘                              └────────┬─────────┘
+        │                                                 │
+        │ plan upgrade (webhook)               RepositorySynced
+        ▼                                      StreakUpdated
+┌─────────────────┐                            │
+│  Billing        │                            ▼
+│  Context        │           ┌──────────────────────┐
+│  (Stripe)       │           │  Notifications       │
+└─────────────────┘           │  Context (Resend)    │
+                              └──────────────────────┘
 ```
 
-**Relationship types:**
-- Identity → Analytics: **Published Language** (domain events)
-- Identity → Billing: **Published Language** (domain events)
-- Analytics → Notifications: **Published Language** (domain events)
-- Billing → Analytics: **Conformist** (Analytics respects plan limits from Billing)
+---
+
+*Last updated: 2026-05-12*

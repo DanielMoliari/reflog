@@ -2,6 +2,52 @@
 
 All notable changes to DevPulse are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] — 2026-05-12
+
+### Added
+- Stripe billing — full hexagonal BillingModule: checkout session, customer portal, webhook handler at `/api/v1/stripe/webhook`
+- Auto-import all repos after Stripe upgrade to PRO
+- Upgrade modal — Radix Dialog with Monthly/Annual toggle (20% off yearly), 3 plans, MOST POPULAR badge; mounted globally via Zustand
+- Settings → Billing tab — current plan, next billing date, Stripe portal for paid users
+- Per-user auto-sync prefs — `autoSyncEnabled` + `autoSyncIntervalHours` (1h/6h/24h); cron respects each user's interval
+- Team plan waitlist — `WaitlistEntry` DB table, `joinWaitlist` mutation, waitlist form UI on `/team`
+- Year in Code — `/year/[year]` Wrapped-style page with 6 stat cards, streak callout, month breakdown, year nav; sidebar linked (PRO gate)
+- Reviews KPI card on dashboard with sparkline and trend
+- Personal records toast — trophy notification after sync when today's commits/additions/netLines beat all-time daily best
+- Streak freeze — `useStreakFreeze` mutation; FREE gets 1 lifetime freeze, PRO unlimited; button on `/streaks`
+- Public profile secondary stats — lines written, PRs opened, avg commits/active day on `/u/[username]`
+- Public profile rank pills — Top X% by lines/PRs/commit intensity/active days; gated on `userCount ≥ 10`
+- `githubUsername` column on User — persisted on every OAuth; auto-populates `username` on first login
+- Delete account — `deleteAccount` mutation + two-step confirm in Settings → Danger zone
+- Public profile visibility toggles — `publicShowStreak` / `publicShowRepos` in Settings
+- Evolution tab on `/repos` — LanguageStream streamgraph (year-over-year language adoption)
+- Global search — command-palette style, DevPulse profile + GitHub API fallback
+- Public repo analysis — `/r/[owner]/[repo]` SSR page; reachable from landing page search bar
+- Landing page repo search bar routing to `/r/[owner]/[repo]`
+- Onboarding prompt — "Track your first repo" CTA when no repos tracked
+- Streak milestone card — Spotify Wrapped-style, 6 milestones (7/30/60/100/200/365), localStorage-persisted dismissal
+- Streak at-risk banner — amber banner after 20:00 UTC with countdown
+- Notifications bell — in-session sync-complete and sync-error events
+- og:image — edge runtime `opengraph-image.tsx`, 1200×627 with real stats
+- Share + embed buttons on public profiles
+- SEO — robots.ts, sitemap.ts, rich metadata
+
+### Changed
+- Plan limits restructured: FREE = 10 repos + 90-day history; PRO = unlimited repos + all-time history + Year in Code + rank pills; TEAM = same as PRO (waitlist)
+- Sync cron changed from fixed 6-hour global to per-user interval (1h/6h/24h) with enabled toggle
+- Public profile opt-in now correctly enforced in `PublicProfileService` (was always-public bug)
+- `isPrivate` on repo detail now reads from DB field, not star/fork heuristic
+- `importFromGitHub` returns `{ imported, tracked }` object (was returning `boolean`)
+- Streak milestone comparison uses `≤` (was exact `===`, missing users between milestones)
+- Settings name state initialization moved to `useEffect` (was mutating state in render body)
+
+### Fixed
+- ESLint errors blocking production build
+- Stripe SDK v22 `currentPeriodEnd` read from subscription item (not subscription root)
+- Streak row ensured to exist before recalculate on first sync
+- `upsertRepository` now updates `isTracked` on re-import
+- Non-null assertion for `noUncheckedIndexedAccess` in `importFromGitHub`
+
 ## [0.1.0] — 2026-04-29
 
 ### Added

@@ -1,26 +1,26 @@
-# DevPulse — API Design
+# DevPulse — API Reference
 
 ## Overview
 
 DevPulse exposes two API surfaces:
 1. **GraphQL** — primary interface for the web dashboard (queries + mutations)
-2. **REST** — webhook endpoint for GitHub push events and a minimal auth flow
+2. **REST** — OAuth auth flow, Stripe webhook, and card image endpoint
 
 Base URL: `http://localhost:17642/api/v1`
 Swagger docs: `http://localhost:17642/api/docs`
-GraphQL playground: `http://localhost:17642/api/graphql`
+GraphQL endpoint: `http://localhost:17642/api/graphql`
 
 ---
 
 ## Authentication
 
-All authenticated endpoints require a Bearer JWT in the `Authorization` header:
+All authenticated GraphQL operations require a Bearer JWT:
 
 ```
 Authorization: Bearer <jwt_token>
 ```
 
-JWTs are issued after completing GitHub OAuth flow and expire per `JWT_EXPIRES_IN` (default `7d`). Refresh tokens are not implemented in v1 — users re-authenticate.
+JWTs are issued after completing GitHub OAuth and expire per `JWT_EXPIRES_IN` (default `15d`). No refresh token — users re-authenticate via OAuth.
 
 ### Auth Flow
 
@@ -33,157 +33,59 @@ JWTs are issued after completing GitHub OAuth flow and expire per `JWT_EXPIRES_I
                         │
                         └─► API issues JWT
                                 │
-                                └─► Redirect to /dashboard?token=xxx
+                                └─► Redirect to /auth/callback?token=xxx
+                                        │
+                                        └─► Frontend stores token, redirects to /dashboard
 ```
 
 ---
 
-## GraphQL Schema
+## GraphQL Operations
 
-```graphql
-# ─── Scalars ──────────────────────────────────────────────────────────────────
-scalar DateTime
-scalar Date
-scalar JSON
+All operations are defined code-first. The auto-generated schema lives at `packages/api/src/graphql/schema.gql`.
 
-# ─── Enums ────────────────────────────────────────────────────────────────────
-enum Plan {
-  FREE
-  PRO
-  TEAM
-}
+### Queries
 
-enum SyncState {
-  IDLE
-  SYNCING
-  ERROR
-}
+| Operation | Auth | Description |
+|---|---|---|
+| `me` | ✅ | Current user: id, name, email, avatarUrl, plan, githubUsername, autoSyncEnabled, autoSyncIntervalHours, subscriptionStatus, currentPeriodEnd |
+| `repositories` | ✅ | All repos (tracked + untracked); each has id, fullName, language, isTracked, isPrivate, syncState, pushedAt, lastSyncedAt |
+| `metrics(input: { from, to })` | ✅ | Daily metric rows aggregated across all tracked repos; history window clamped to plan's `historyDays` (FREE=90d, PRO/TEAM=all-time) |
+| `streak` | ✅ | currentStreak, longestStreak, lastActiveDate, freezesUsed |
+| `heatmap(year?, metric?)` | ✅ | 365-day grid; metric: COMMITS \| LINES \| CHURN \| PRS |
+| `techGraph` | ✅ | Repo × language constellation nodes and links (byte weights) |
+| `languageHistory` | ✅ | Year-over-year cumulative adoption `{ years[], series[] }` for streamgraph |
+| `insights` | ✅ | Burnout signal (atRisk, consecutiveDays, netLinesTrend) + tech graduations list |
+| `hourlyActivity` | ✅ | 24-slot UTC hour distribution `{ hours[], peakHour, peakRatio }`; 1–3 min cold path |
+| `repositoryDetail(id)` | ✅ | Health score, PR timeline, file hotspots, ecosystem connections, code ownership, curiosities |
+| `platformStats` | ❌ | Live userCount + commitCount from DB (used on landing page) |
+| `publicProfile(username)` | ❌ | Public profile data; returns null if user hasn't opted in or doesn't exist in DevPulse |
+| `searchProfile(query)` | ❌ | DevPulse profile search, falls back to GitHub API |
+| `searchRepo(owner, repo)` | ❌ | Anonymous GitHub repo analysis |
+| `billingStatus` | ✅ | isConfigured (Stripe keys present), subscriptionStatus, currentPeriodEnd, plan |
+| `personalRecords` | ✅ | All-time daily bests for commits, additions, netLines; compare against today |
 
-# ─── Types ────────────────────────────────────────────────────────────────────
-type User {
-  id: ID!
-  name: String
-  email: String
-  avatarUrl: String
-  plan: Plan!
-  githubUsername: String!
-  createdAt: DateTime!
-  streak: StreakRecord
-  repositories: [Repository!]!
-  recentMetrics(days: Int = 30): [DailyMetrics!]!
-}
+### Mutations
 
-type Repository {
-  id: ID!
-  fullName: String!
-  language: String
-  isTracked: Boolean!
-  lastSyncedAt: DateTime
-  syncState: SyncState!
-  metrics(from: Date!, to: Date!): [DailyMetrics!]!
-}
-
-type DailyMetrics {
-  id: ID!
-  date: Date!
-  repository: Repository
-  commits: Int!
-  additions: Int!
-  deletions: Int!
-  prsOpened: Int!
-  prsMerged: Int!
-  reviewsDone: Int!
-  # derived
-  netLines: Int!           # additions - deletions
-  churnRatio: Float        # deletions / (additions + deletions)
-}
-
-type StreakRecord {
-  currentStreak: Int!
-  longestStreak: Int!
-  lastActiveDate: Date
-  freezesRemaining: Int!
-}
-
-type WeeklyDigest {
-  id: ID!
-  weekStart: Date!
-  summary: DigestSummary!
-  sentAt: DateTime
-}
-
-type DigestSummary {
-  totalCommits: Int!
-  totalAdditions: Int!
-  totalDeletions: Int!
-  totalPrsOpened: Int!
-  totalPrsMerged: Int!
-  totalReviewsDone: Int!
-  activeDays: Int!
-  topRepository: String
-  streakChange: Int!         # positive = streak grew, negative = broke
-}
-
-type SyncResult {
-  repositoryId: ID!
-  metricsIngested: Int!
-  syncedAt: DateTime!
-}
-
-type AuthPayload {
-  accessToken: String!
-  expiresAt: DateTime!
-  user: User!
-}
-
-# ─── Queries ──────────────────────────────────────────────────────────────────
-type Query {
-  # Identity
-  me: User
-
-  # Analytics
-  repository(id: ID!): Repository
-  repositories: [Repository!]!
-
-  metrics(
-    from: Date!
-    to: Date!
-    repositoryId: ID         # null = aggregate across all repos
-  ): [DailyMetrics!]!
-
-  streak: StreakRecord
-
-  heatmap(year: Int): [HeatmapDay!]!  # GitHub-style contribution heatmap
-
-  # Notifications
-  weeklyDigests(limit: Int = 10): [WeeklyDigest!]!
-  latestDigest: WeeklyDigest
-}
-
-type HeatmapDay {
-  date: Date!
-  count: Int!     # total commits that day
-  level: Int!     # 0–4 (0=none, 4=very active) — matches GitHub palette
-}
-
-# ─── Mutations ────────────────────────────────────────────────────────────────
-type Mutation {
-  # Analytics — repository management
-  trackRepository(githubRepoId: String!): Repository!
-  untrackRepository(id: ID!): Boolean!
-  syncRepository(id: ID!): SyncResult!
-  syncAllRepositories: [SyncResult!]!
-
-  # Notifications preferences
-  updateDigestPreferences(enabled: Boolean!, dayOfWeek: Int): User!
-}
-
-# ─── Subscriptions (v2) ───────────────────────────────────────────────────────
-# type Subscription {
-#   syncProgress(repositoryId: ID!): SyncProgressEvent
-#   streakUpdated: StreakRecord
-# }
-```
+| Operation | Auth | Description |
+|---|---|---|
+| `trackRepository(githubRepoId)` | ✅ | Start tracking a repo; enforces plan cap |
+| `untrackRepository(id)` | ✅ | Stop tracking a repo |
+| `syncRepository(id)` | ✅ | Enqueue a sync job; enforces plan cap |
+| `syncAllRepositories` | ✅ | Enqueue sync for all tracked repos |
+| `importFromGitHub` | ✅ | Re-import all GitHub repos, track up to plan cap; returns `{ imported, tracked }` |
+| `updateProfile(input)` | ✅ | Update display name |
+| `updateNotificationPrefs(input)` | ✅ | Toggle streakAlerts + weeklyDigest |
+| `updatePublicProfilePrefs(input)` | ✅ | Toggle publicShowStreak + publicShowRepos |
+| `enablePublicProfile(input: { username })` | ✅ | Opt in to public profile at `/u/{username}`; validates username format + reserved names |
+| `disablePublicProfile` | ✅ | Opt out; profile returns 404/GitHub-fallback |
+| `updateAutoSyncPrefs(input)` | ✅ | Toggle autoSyncEnabled, set autoSyncIntervalHours (1/6/24) |
+| `useStreakFreeze` | ✅ | Apply a freeze for today; FREE plan: 1 lifetime freeze; PRO: unlimited |
+| `deleteAccount` | ✅ | Wipes user row + all related data via Prisma cascade; clears token |
+| `createCheckoutSession(priceId)` | ✅ | Create Stripe Checkout session; returns `{ url }` |
+| `createPortalSession` | ✅ | Create Stripe Customer Portal session; returns `{ url }` |
+| `joinWaitlist(input)` | ❌ | Add entry to `WaitlistEntry` table (Team plan waitlist) |
+| `sendTestDigest` | ✅ | Trigger weekly digest email immediately (developer-only; no UI) |
 
 ---
 
@@ -191,143 +93,99 @@ type Mutation {
 
 ### Auth
 
-| Method | Path                              | Description                          |
-|--------|-----------------------------------|--------------------------------------|
-| GET    | `/auth/github`                    | Initiate GitHub OAuth flow           |
-| GET    | `/auth/github/callback`           | GitHub OAuth callback (issues JWT)   |
-| POST   | `/auth/logout`                    | Invalidate current JWT               |
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/auth/github` | Initiate GitHub OAuth flow |
+| GET | `/api/v1/auth/github/callback` | GitHub OAuth callback — issues JWT, redirects to frontend |
+
+### Stripe
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/v1/stripe/webhook` | Receive Stripe events (signature verified via `STRIPE_WEBHOOK_SECRET`) |
+
+Handled events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+
+### Card Image
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/v1/card/:username` | SVG profile card for README embedding |
 
 ### GitHub Webhooks
 
-| Method | Path                              | Description                          |
-|--------|-----------------------------------|--------------------------------------|
-| POST   | `/webhooks/github`                | Receive GitHub push/PR events        |
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/v1/webhooks/github` | Receive GitHub push/PR events |
 
-**Webhook payload processing:**
+**Note:** Webhook receiver is wired and functional, but DevPulse never registers webhooks with GitHub at repo-track time. The `Webhook` DB table is always empty. Sync is cron-only.
 
-```
-POST /api/v1/webhooks/github
-Headers:
-  X-GitHub-Event: push | pull_request | pull_request_review
-  X-Hub-Signature-256: sha256=<hmac>
-  Content-Type: application/json
-```
+### Documentation
 
-Verification flow:
-1. Check `X-Hub-Signature-256` — HMAC-SHA256 over raw body with webhook secret
-2. Reject with `401` if signature invalid
-3. Look up repository by `repository.full_name`
-4. Enqueue `SyncRepositoryJob` with the event payload
-5. Return `202 Accepted` immediately (webhook must respond < 10s)
-
-### Health
-
-| Method | Path          | Description                  |
-|--------|---------------|------------------------------|
-| GET    | `/health`     | API health check             |
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/docs` | Swagger/OpenAPI UI |
 
 ---
 
-## Rate Limiting Strategy
+## Plan Limits
 
-### GitHub API Limits
-- **Authenticated REST API:** 5,000 requests/hour per user token
-- **GraphQL API:** 5,000 points/hour (complex queries cost more)
-- **Search API:** 30 requests/minute
+Enforced server-side at `trackRepository`, `triggerSync`, and `importFromGitHub`. Single source of truth: `packages/api/src/modules/identity/domain/plan-limits.ts`.
 
-### DevPulse Rate Limit Budget
+| Feature | FREE | PRO | TEAM |
+|---|---|---|---|
+| Tracked repos | 10 | Unlimited | Unlimited |
+| History window | 90 days | All-time | All-time |
+| Year in Code | ❌ | ✅ | ✅ |
+| Rank pills on public profile | ❌ | ✅ | ✅ |
+| Streak freezes | 1 (lifetime) | Unlimited | Unlimited |
+| Weekly digest | ✅ | ✅ | ✅ |
 
-```
-Per-user hourly budget: 5,000 req
-─────────────────────────────────────────────
-Initial sync (full history):
-  - Repos list:           1 req
-  - Commits per repo:     ~10 req/repo (pagination, 100/page)
-  - PRs per repo:         ~5 req/repo
-  - Reviews per repo:     ~5 req/repo
-  Total for 10 repos:     ~210 req (4.2% of budget)
+---
 
-Daily incremental sync (last 24h):
-  - Per repo:             ~3 req
-  - Total for 10 repos:   ~30 req (0.6% of budget)
+## Rate Limiting
 
-On-demand (user triggers sync):
-  - Same as daily sync
-  - Rate-limited to 1 manual sync per repo per 5 minutes
-```
+### GitHub API
+- Authenticated REST: 5,000 req/hour per user token
+- Managed by `@octokit/plugin-throttling` + `@octokit/plugin-retry`
 
-### Implementation
-
-```typescript
-// Redis-backed rate limiter per user token
-interface GitHubRateLimitState {
-  remaining: number
-  resetAt: Date
-  used: number
-}
-
-// Strategy:
-// 1. Check X-RateLimit-Remaining header on every response
-// 2. If remaining < 100 → pause all sync jobs for that user until resetAt
-// 3. Store state in Redis: github:ratelimit:{userId}
-// 4. Exponential backoff on 429: 1s → 2s → 4s → 8s (max 4 retries)
-// 5. Use conditional requests (If-None-Match + ETags) to save quota
-//    on unchanged resources
-```
-
-### NestJS Throttler (API-level)
-
-```typescript
-// Applied globally in AppModule
-ThrottlerModule.forRoot([
-  { name: 'short', ttl: 1000,  limit: 10  },  // 10 req/s
-  { name: 'medium', ttl: 60000, limit: 200 },  // 200 req/min
-  { name: 'long', ttl: 3600000, limit: 1000 }, // 1000 req/h
-])
-```
-
-Webhook endpoint is exempt from throttling (GitHub IPs are allowlisted).
+### NestJS Throttler (REST endpoints)
+Applied globally; GraphQL endpoint uses per-resolver guards where needed.
 
 ---
 
 ## Error Handling
 
 ### GraphQL Errors
-
 ```json
 {
-  "errors": [
-    {
-      "message": "Repository not found",
-      "extensions": {
-        "code": "NOT_FOUND",
-        "repositoryId": "clxyz123"
-      }
-    }
-  ]
+  "errors": [{
+    "message": "Repository not found",
+    "extensions": { "code": "NOT_FOUND" }
+  }]
 }
 ```
 
 ### REST Errors
-
 ```json
 {
   "statusCode": 401,
   "error": "Unauthorized",
-  "message": "JWT has expired",
-  "timestamp": "2026-04-29T12:00:00.000Z",
-  "path": "/api/v1/auth/logout"
+  "message": "JWT has expired"
 }
 ```
 
 ### Error Codes
 
-| Code                   | HTTP  | Description                              |
-|------------------------|-------|------------------------------------------|
-| `UNAUTHORIZED`         | 401   | Missing or invalid JWT                   |
-| `FORBIDDEN`            | 403   | Valid JWT but insufficient permissions   |
-| `NOT_FOUND`            | 404   | Resource not found                       |
-| `RATE_LIMITED`         | 429   | Too many requests                        |
-| `GITHUB_RATE_LIMITED`  | 503   | GitHub API quota exhausted               |
-| `SYNC_IN_PROGRESS`     | 409   | Sync already running for this repository |
-| `PLAN_LIMIT_EXCEEDED`  | 402   | Free plan repository limit reached       |
+| Code | HTTP | Description |
+|---|---|---|
+| `UNAUTHORIZED` | 401 | Missing or invalid JWT |
+| `FORBIDDEN` | 403 | Valid JWT but insufficient permissions |
+| `NOT_FOUND` | 404 | Resource not found |
+| `RATE_LIMITED` | 429 | Too many requests |
+| `PLAN_LIMIT_EXCEEDED` | 402 | Plan repo or history limit reached |
+| `BILLING_NOT_CONFIGURED` | 503 | Stripe keys not set |
+
+---
+
+*Last updated: 2026-05-12*
