@@ -56,10 +56,12 @@ export class StripeAdapter implements IBillingPort {
 
   async retrieveSubscription(subscriptionId: string): Promise<StripeSubscriptionData> {
     const sub = await this.client.subscriptions.retrieve(subscriptionId)
-    const interval = sub.items.data[0]?.price?.recurring?.interval
+    const item = sub.items.data[0]
+    const periodEnd = item?.current_period_end
+    const interval = item?.price?.recurring?.interval
     return {
       status: sub.status,
-      currentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+      currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
       cancelAtPeriodEnd: sub.cancel_at_period_end,
       interval: interval === 'year' ? 'yearly' : interval === 'month' ? 'monthly' : null,
     }
