@@ -167,43 +167,43 @@ const FEATURES = [
   {
     icon: GitCommit,
     title: 'Contribution Heatmap',
-    desc: 'Your entire GitHub history on one canvas. Spot your most productive weeks, track consistency, and see exactly when you code best.',
+    desc: 'Every commit, every day — laid out so you can see your real rhythm. Consistency becomes visible.',
   },
   {
     icon: Flame,
-    title: 'Streak Engine',
-    desc: "Day streaks with fire. Never break the chain — reflog tracks every day you ship and alerts you before a streak dies.",
+    title: 'Streak Tracking',
+    desc: "Build the habit. reflog keeps your streak alive and lets you know before it's at risk — so you never lose it by accident.",
   },
   {
     icon: BarChart3,
-    title: 'Deep Commit Analytics',
-    desc: 'Commits over time, churn rate, language shifts, PR throughput. More signal, less noise — in one clean view.',
+    title: 'Commit & PR Analytics',
+    desc: 'Track your commits, pull requests, and reviews over time. See how your output evolves — week over week, month over month.',
   },
   {
     icon: GitPullRequest,
-    title: 'PR Intelligence',
-    desc: 'Merge rates, review cycles, time-to-close. Track how your PR game evolves week over week.',
+    title: 'PR Insights',
+    desc: "See how your PR game has improved over time. Merge more, review faster, ship with confidence.",
   },
   {
     icon: TrendingUp,
     title: 'Growth Trends',
-    desc: 'Are you shipping more than last month? Reviewing more? reflog answers those questions automatically.',
+    desc: 'Are you shipping more than last month? reflog surfaces the answer without you having to dig for it.',
   },
   {
     icon: Globe,
     title: 'Public Profile',
-    desc: 'A shareable developer card with your real metrics. Put it in your bio, your README, or your portfolio.',
+    desc: 'Your developer identity, shareable in one link. Put it in your bio, your README, or your next job application.',
   },
 ]
 
 
 const TEAM_FEATURES = [
-  { Icon: BarChart2,     title: 'Team Dashboard',       desc: 'Leaderboard de commits, PRs e reviews por dev. Velocity chart do time ao longo do tempo. Heatmap coletivo de contribuição.' },
-  { Icon: AlertTriangle, title: 'Sinais de saúde',       desc: 'Burnout detector por dev. Concentration risk (um dev com >70% dos commits de um repo). Review bottlenecks e silos técnicos.' },
-  { Icon: FileText,      title: 'Relatórios executivos', desc: 'Weekly Engineering Report em PDF para o board. Sprint retrospective com dados reais. Onboarding progress para novos devs.' },
-  { Icon: ShieldCheck,   title: 'SSO & Admin controls',  desc: 'Integração com GitHub Org para import automático de membros. Roles: Admin, Manager, Member. Granularidade de privacidade por dev.' },
-  { Icon: MessageSquare, title: 'Integração Slack',      desc: 'Resumo semanal do time no canal de engenharia. Alertas de burnout em DM para o manager. Configurável por threshold.' },
-  { Icon: TrendingUp,    title: 'Acompanhar evolução',   desc: 'Curva de contribuição de novos devs (30/60/90 dias). Tech debt signal por repo. Comparativo de velocity entre sprints.' },
+  { Icon: BarChart2,     title: 'Team Dashboard',       desc: "See who's shipping, who's reviewing, and how the team moves as a whole — all from GitHub data." },
+  { Icon: AlertTriangle, title: 'Health signals',        desc: "Spot overload and bottlenecks before they become problems. Know who needs support without asking." },
+  { Icon: FileText,      title: 'Executive reports',     desc: 'Engineering summaries ready to share — with stakeholders, in retros, or when onboarding someone new.' },
+  { Icon: ShieldCheck,   title: 'Access & privacy',      desc: 'Connect your GitHub org, set roles, and control what each person can see. Built for real teams.' },
+  { Icon: MessageSquare, title: 'Slack integration',     desc: 'Your weekly team pulse, delivered to your engineering channel. No dashboard required.' },
+  { Icon: TrendingUp,    title: 'Growth tracking',       desc: 'Watch new devs ramp up and established ones keep momentum. Trends that are actually useful.' },
 ]
 
 function formatCount(n: number): string {
@@ -381,8 +381,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="mx-auto mb-10 max-w-xl text-lg leading-relaxed text-slate-400">
-            Track commits, streaks, and PRs in real time. See what you&apos;ve built,
-            spot your patterns, and stay motivated — all in one clean dashboard.
+            Commits, streaks, PRs, reviews — reflog turns your GitHub history into a clear picture of your growth. Finally know how far you&apos;ve come.
           </p>
 
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
@@ -438,7 +437,7 @@ export default function LandingPage() {
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-cyan-400">Features</p>
             <h2 className="text-4xl font-bold tracking-tight">Built for developers who care about growth</h2>
             <p className="mx-auto mt-4 max-w-lg text-slate-500">
-              Not just a stats page. reflog turns your GitHub history into actionable, motivating insights.
+              Your GitHub history is full of signal. reflog makes it visible.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -496,11 +495,11 @@ export default function LandingPage() {
       <section id="team" className="px-6 py-24 border-t border-border">
         <div className="mx-auto max-w-5xl">
           <div className="mb-4 text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-accent">Team Plan — Em breve</p>
-            <h2 className="text-4xl font-bold tracking-tight">Para engineering managers</h2>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-accent">Team Plan — Coming Soon</p>
+            <h2 className="text-4xl font-bold tracking-tight">Your team, finally legible</h2>
             <p className="mt-4 text-slate-500 max-w-2xl mx-auto">
-              Dados reais do GitHub — commits, PRs, reviews — agregados no nível do time.
-              Visibilidade sem microgerenciamento.
+              Real signals from GitHub — no surveys, no standups, no spreadsheets.
+              Built for managers who lead with data, not gut feel.
             </p>
           </div>
 
@@ -518,11 +517,11 @@ export default function LandingPage() {
 
           <div className="mt-10 flex flex-col items-center gap-3 text-center">
             <p className="text-sm text-slate-400">
-              Preço a partir de <span className="font-semibold text-slate-200">$49/mês</span> para times de até 5 devs.
-              Não cobramos por seat.
+              Starting at <span className="font-semibold text-slate-200">$49/mo</span> for teams up to 5 devs.
+              No per-seat pricing.
             </p>
             <TeamWaitlistForm source="landing" compact />
-            <p className="text-xs text-slate-600">Lançamento previsto para Q3 2026 · Sem cobrança até o lançamento</p>
+            <p className="text-xs text-slate-600">Expected launch Q3 2026 · No charge until launch</p>
           </div>
         </div>
       </section>

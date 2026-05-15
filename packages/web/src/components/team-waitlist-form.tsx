@@ -52,8 +52,8 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
       <div className="flex items-center gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/8 px-5 py-4">
         <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
         <div>
-          <p className="text-sm font-semibold text-emerald-300">Você está na lista!</p>
-          <p className="text-xs text-slate-500 mt-0.5">Vamos avisar quando o Team Plan for lançado.</p>
+          <p className="text-sm font-semibold text-emerald-300">You&apos;re on the list!</p>
+          <p className="text-xs text-slate-500 mt-0.5">We&apos;ll let you know when the Team Plan launches.</p>
         </div>
       </div>
     )
@@ -67,7 +67,7 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="seu@email.com"
+            placeholder="your@email.com"
             required
             className="flex-1 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
           />
@@ -76,7 +76,7 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
             disabled={loading}
             className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors disabled:opacity-60"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Entrar na waitlist <ArrowRight className="h-4 w-4" /></>}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Join waitlist <ArrowRight className="h-4 w-4" /></>}
           </button>
         </div>
         {error && <p className="text-xs text-red-400 text-center">{error}</p>}
@@ -91,14 +91,14 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Seu nome"
+          placeholder="Your name"
           className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
         />
         <input
           type="text"
           value={company}
           onChange={(e) => setCompany(e.target.value)}
-          placeholder="Empresa"
+          placeholder="Company"
           className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
         />
       </div>
@@ -106,7 +106,7 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="email@empresa.com"
+        placeholder="email@company.com"
         required
         className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
       />
@@ -115,7 +115,7 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
         onChange={(e) => setTeamSize(e.target.value)}
         className="w-full cursor-pointer rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-400 focus:outline-none"
       >
-        <option value="">Tamanho do time (opcional)</option>
+        <option value="">Team size (optional)</option>
         <option value="1-5">1–5 devs</option>
         <option value="6-20">6–20 devs</option>
         <option value="21-50">21–50 devs</option>
@@ -127,9 +127,9 @@ export function TeamWaitlistForm({ source = 'landing', compact = false }: TeamWa
         disabled={loading}
         className="w-full cursor-pointer rounded-xl bg-accent py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Entrar na waitlist <ArrowRight className="h-4 w-4" /></>}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Join waitlist <ArrowRight className="h-4 w-4" /></>}
       </button>
-      <p className="text-center text-[11px] text-slate-700">Sem spam. Sem cobrança até o lançamento.</p>
+      <p className="text-center text-[11px] text-slate-700">No spam. No charge until launch.</p>
     </form>
   )
 }

@@ -29,7 +29,7 @@ export default function AcceptInvitePage({ params }: PageProps) {
           setTimeout(() => router.push('/team'), 2500)
         }
       } catch (e) {
-        setErrorMsg(e instanceof Error ? e.message : 'Convite inválido ou expirado.')
+        setErrorMsg(e instanceof Error ? e.message : 'Invalid or expired invite.')
         setStatus('error')
       }
     }
@@ -46,22 +46,22 @@ export default function AcceptInvitePage({ params }: PageProps) {
       </div>
       {status === 'loading' && (
         <div>
-          <p className="text-lg font-semibold text-slate-200">Entrando no time…</p>
-          <p className="mt-1 text-sm text-slate-500">Verificando seu convite</p>
+          <p className="text-lg font-semibold text-slate-200">Joining team…</p>
+          <p className="mt-1 text-sm text-slate-500">Verifying your invite</p>
         </div>
       )}
       {status === 'success' && (
         <div>
-          <p className="text-lg font-semibold text-emerald-300">Bem-vindo ao {teamName}!</p>
-          <p className="mt-1 text-sm text-slate-500">Redirecionando para o dashboard do time…</p>
+          <p className="text-lg font-semibold text-emerald-300">Welcome to {teamName}!</p>
+          <p className="mt-1 text-sm text-slate-500">Redirecting to your team dashboard…</p>
         </div>
       )}
       {status === 'error' && (
         <div>
-          <p className="text-lg font-semibold text-slate-200">Convite inválido</p>
+          <p className="text-lg font-semibold text-slate-200">Invalid invite</p>
           <p className="mt-1 text-sm text-slate-500">{errorMsg}</p>
           <Button className="mt-4 cursor-pointer" onClick={() => router.push('/team')}>
-            Voltar
+            Go back
           </Button>
         </div>
       )}

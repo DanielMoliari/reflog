@@ -12,9 +12,9 @@ import type { Team, User } from '@/graphql/types'
 import { TeamWaitlistForm } from '@/components/team-waitlist-form'
 
 const TEAM_PREVIEW_FEATURES = [
-  { Icon: BarChart2, title: 'Team Dashboard', desc: 'Commits, PRs e reviews de cada dev em um só lugar' },
-  { Icon: AlertTriangle, title: 'Sinais de saúde', desc: 'Burnout detector, silos técnicos, review bottlenecks' },
-  { Icon: FileText, title: 'Relatórios', desc: 'Weekly Engineering Report exportável para o board' },
+  { Icon: BarChart2, title: 'Team Dashboard', desc: 'See who is shipping and who is stuck — before it becomes a problem' },
+  { Icon: AlertTriangle, title: 'Health signals', desc: 'Know when someone is overloaded or when your team has a bottleneck' },
+  { Icon: FileText, title: 'Reports', desc: 'Engineering updates ready to share — no manual work required' },
 ]
 
 export default function TeamPage() {
@@ -45,7 +45,7 @@ export default function TeamPage() {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600 mb-2">Team</p>
         <h1 className="text-3xl font-black text-slate-100">Engineering Team Dashboard</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Visibilidade de time sem microgerenciamento — dados reais do GitHub, não de planilhas.
+          Team visibility without micromanagement — real GitHub data, not spreadsheets.
         </p>
       </div>
 
@@ -59,12 +59,12 @@ export default function TeamPage() {
               <Users className="h-7 w-7 text-accent" />
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-accent mb-4">
-              <Sparkles className="h-3 w-3" /> Em breve
+              <Sparkles className="h-3 w-3" /> Coming Soon
             </div>
             <h2 className="text-2xl font-bold text-slate-100 mb-3">Team Plan — Coming Soon</h2>
             <p className="text-slate-400 max-w-lg mx-auto text-sm leading-relaxed">
-              Dashboard coletivo com leaderboard, velocity charts, burnout detector e relatórios para stakeholders.
-              Construído para engineering managers que querem dados reais, não métricas de vigilância.
+              Everything you need to understand how your team is doing — without asking them.
+              Real signals, not surveillance.
             </p>
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left">
               {TEAM_PREVIEW_FEATURES.map((f) => (
@@ -77,7 +77,7 @@ export default function TeamPage() {
             </div>
             <div className="mt-8 flex flex-col items-center justify-center gap-3">
               <TeamWaitlistForm source="team-page" compact />
-              <p className="text-xs text-slate-600">Nenhuma cobrança até o lançamento</p>
+              <p className="text-xs text-slate-600">No charge until launch</p>
             </div>
           </div>
         </div>
@@ -97,11 +97,11 @@ export default function TeamPage() {
                 <Users className="h-7 w-7 text-slate-500" />
               </div>
               <div>
-                <p className="text-lg font-semibold text-slate-200">Nenhum time ainda</p>
-                <p className="mt-1 text-sm text-slate-500">Crie seu primeiro time ou peça um convite ao admin.</p>
+                <p className="text-lg font-semibold text-slate-200">No teams yet</p>
+                <p className="mt-1 text-sm text-slate-500">Create your first team or ask an admin for an invite.</p>
               </div>
               <Button onClick={() => setShowCreate(true)} className="cursor-pointer">
-                <Plus className="mr-2 h-4 w-4" /> Criar time
+                <Plus className="mr-2 h-4 w-4" /> Create team
               </Button>
             </div>
           ) : (
@@ -111,7 +111,7 @@ export default function TeamPage() {
                   {teams.length} time{teams.length !== 1 ? 's' : ''}
                 </p>
                 <Button size="sm" onClick={() => setShowCreate(true)} className="cursor-pointer">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Novo time
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> New team
                 </Button>
               </div>
               {teams.map((team) => (
@@ -134,12 +134,12 @@ export default function TeamPage() {
           {/* Create team inline form */}
           {showCreate && (
             <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
-              <p className="text-sm font-semibold text-slate-100">Criar novo time</p>
+              <p className="text-sm font-semibold text-slate-100">Create new team</p>
               <input
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleCreate() }}
-                placeholder="Nome do time (ex: Acme Engineering)"
+                placeholder="Team name (e.g. Acme Engineering)"
                 className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
                 autoFocus
               />
@@ -151,10 +151,10 @@ export default function TeamPage() {
                   className="cursor-pointer"
                   size="sm"
                 >
-                  {creating ? 'Criando…' : 'Criar time'}
+                  {creating ? 'Creating…' : 'Create team'}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setShowCreate(false)} className="cursor-pointer">
-                  Cancelar
+                  Cancel
                 </Button>
               </div>
             </div>

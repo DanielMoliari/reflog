@@ -66,7 +66,7 @@ export default function YearInCodePage({ params }: PageProps) {
   const metrics = metricsData?.metrics ?? []
   const plan = meData?.me?.plan ?? 'FREE'
   const isFree = plan === 'FREE'
-  const partialLabel = isFree ? 'últimos 90 dias' : undefined
+  const partialLabel = isFree ? 'last 90 days' : undefined
 
   const stats = useMemo(() => {
     let commits = 0, additions = 0, deletions = 0, prsOpened = 0, prsMerged = 0, reviews = 0
@@ -151,20 +151,20 @@ export default function YearInCodePage({ params }: PageProps) {
             <Calendar className="h-7 w-7 text-slate-500" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-slate-200">Sem dados para {selectedYear}</p>
+            <p className="text-lg font-semibold text-slate-200">No data for {selectedYear}</p>
             <p className="mt-1.5 text-sm text-slate-500 max-w-sm">
               {selectedYear > CURRENT_YEAR
-                ? 'Esse ano ainda não aconteceu.'
+                ? "That year hasn't happened yet."
                 : isFree
-                  ? `Nenhum repositório tem atividade nos últimos 90 dias de ${selectedYear}. Faça upgrade para PRO e veja sua história completa.`
-                  : `Nenhum repositório trackeado tem atividade em ${selectedYear}.`}
+                  ? `No repositories have activity in the last 90 days of ${selectedYear}. Upgrade to PRO to see your full history.`
+                  : `No tracked repositories have activity in ${selectedYear}.`}
             </p>
             {isFree && selectedYear <= CURRENT_YEAR && (
               <button
-                onClick={() => openUpgradeModal('Ver toda sua história de código')}
+                onClick={() => openUpgradeModal('See your full code history')}
                 className="mt-4 cursor-pointer rounded-lg bg-accent/15 px-4 py-2 text-xs font-semibold text-accent hover:bg-accent/20 transition-colors"
               >
-                Upgrade para PRO →
+                Upgrade to PRO →
               </button>
             )}
           </div>
@@ -180,25 +180,25 @@ export default function YearInCodePage({ params }: PageProps) {
             <>
               {/* Big stats grid — always visible, partial label under each number */}
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-                <BigStat label="Total commits" value={formatLarge(stats.commits)} sub="repos trackeados"
+                <BigStat label="Total commits" value={formatLarge(stats.commits)} sub="tracked repos"
                   color="text-cyan-400" border="border-cyan-500/20" from="from-cyan-950/40"
                   partialNote={partialLabel} />
-                <BigStat label="Linhas escritas" value={formatLarge(stats.additions)}
-                  sub={`${formatLarge(stats.deletions)} deletadas`}
+                <BigStat label="Lines written" value={formatLarge(stats.additions)}
+                  sub={`${formatLarge(stats.deletions)} deleted`}
                   color="text-emerald-400" border="border-emerald-500/20" from="from-emerald-950/30"
                   partialNote={partialLabel} />
-                <BigStat label="Dias ativos" value={stats.activeDays}
-                  sub={`de ${isCurrentYear ? new Date().getUTCDate() + new Date().getUTCMonth() * 30 : 365} dias`}
+                <BigStat label="Active days" value={stats.activeDays}
+                  sub={`of ${isCurrentYear ? new Date().getUTCDate() + new Date().getUTCMonth() * 30 : 365} days`}
                   color="text-slate-100"
                   partialNote={partialLabel} />
-                <BigStat label="PRs abertos" value={stats.prsOpened} sub={`${stats.prsMerged} mergeados`}
+                <BigStat label="PRs opened" value={stats.prsOpened} sub={`${stats.prsMerged} merged`}
                   color="text-violet-400" border="border-violet-500/20" from="from-violet-950/30"
                   partialNote={partialLabel} />
-                <BigStat label="Code reviews" value={stats.reviews} sub="revisões de código"
+                <BigStat label="Code reviews" value={stats.reviews} sub="reviews done"
                   color="text-amber-400" border="border-amber-500/20" from="from-amber-950/30"
                   partialNote={partialLabel} />
-                <BigStat label="Melhor dia" value={stats.bestDay}
-                  sub={stats.bestDayDate ? `commits em ${stats.bestDayDate}` : 'commits'}
+                <BigStat label="Best day" value={stats.bestDay}
+                  sub={stats.bestDayDate ? `commits on ${stats.bestDayDate}` : 'commits'}
                   color="text-orange-400" border="border-orange-500/20" from="from-orange-950/30"
                   partialNote={partialLabel} />
               </div>
@@ -208,9 +208,9 @@ export default function YearInCodePage({ params }: PageProps) {
                 <div className="flex items-center gap-4 rounded-2xl border border-orange-500/25 bg-gradient-to-r from-orange-500/10 to-amber-500/5 px-6 py-4">
                   <Flame className="h-8 w-8 text-orange-400 shrink-0" fill="currentColor" />
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-orange-400/70">Melhor streak all-time</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-orange-400/70">Best streak all-time</p>
                     <p className="text-3xl font-black text-orange-300">
-                      {longestStreak} <span className="text-base font-normal text-orange-400/60">dias</span>
+                      {longestStreak} <span className="text-base font-normal text-orange-400/60">days</span>
                     </p>
                   </div>
                 </div>
@@ -219,7 +219,7 @@ export default function YearInCodePage({ params }: PageProps) {
               {/* Month-by-month breakdown — always visible */}
               <Card>
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Mês a mês</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Month by month</p>
                   {partialLabel && (
                     <span className="text-[10px] text-amber-500/70 font-medium">{partialLabel}</span>
                   )}
@@ -250,7 +250,7 @@ export default function YearInCodePage({ params }: PageProps) {
               {/* Daily commit activity chart — always visible */}
               <Card>
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Atividade diária de commits</p>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Daily commit activity</p>
                   {partialLabel && (
                     <span className="text-[10px] text-amber-500/70 font-medium">{partialLabel}</span>
                   )}
@@ -268,17 +268,17 @@ export default function YearInCodePage({ params }: PageProps) {
                     </div>
                     <div className="flex-1 text-center sm:text-left">
                       <p className="text-base font-semibold text-slate-100">
-                        Você está vendo os últimos 90 dias de histórico
+                        You&apos;re viewing the last 90 days of history
                       </p>
                       <p className="mt-1 text-sm text-slate-400">
-                        Seus números reais de {selectedYear} podem ser muito maiores. PRO desbloqueia todo o histórico — cada commit que você já fez.
+                        Your real {selectedYear} numbers could be much higher. PRO unlocks your full history — every commit you&apos;ve ever made.
                       </p>
                     </div>
                     <button
-                      onClick={() => openUpgradeModal('Ver toda sua história de código')}
+                      onClick={() => openUpgradeModal('See your full code history')}
                       className="shrink-0 cursor-pointer rounded-xl bg-accent px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors whitespace-nowrap"
                     >
-                      Upgrade para PRO →
+                      Upgrade to PRO →
                     </button>
                   </div>
                 </div>

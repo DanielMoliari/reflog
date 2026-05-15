@@ -288,17 +288,17 @@ export default function DashboardPage() {
             </div>
             <div className="flex-1 text-center sm:text-left">
               <p className="text-sm font-semibold text-slate-100">
-                Você está vendo os últimos 90 dias de histórico
+                You&apos;re viewing the last 90 days of history
               </p>
               <p className="mt-0.5 text-xs text-slate-400">
-                PRO desbloqueia todo o histórico — cada commit, linha e streak desde sempre.
+                PRO unlocks your full history — every commit, line, and streak since day one.
               </p>
             </div>
             <button
-              onClick={() => openUpgradeModal('Ver toda sua história de código')}
+              onClick={() => openUpgradeModal('See your full code history')}
               className="shrink-0 cursor-pointer rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors whitespace-nowrap"
             >
-              Upgrade para PRO →
+              Upgrade to PRO →
             </button>
           </div>
         </div>

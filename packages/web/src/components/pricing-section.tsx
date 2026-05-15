@@ -55,7 +55,7 @@ const PLANS: PlanRow[] = [
   {
     id: 'TEAM',
     name: 'Team',
-    description: 'Para times de engenharia',
+    description: 'For engineering teams',
     monthly: 0,
     yearly: 0,
     features: [

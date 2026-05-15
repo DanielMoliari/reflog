@@ -191,11 +191,11 @@ export default function ReposPage() {
                 </div>
                 {isFree && locked > 0 ? (
                   <button
-                    onClick={() => openUpgradeModal('Desbloquear todos os repositórios')}
+                    onClick={() => openUpgradeModal('Unlock all repositories')}
                     className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/15 transition-colors"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    {locked} repos bloqueados → PRO
+                    {locked} locked repos → PRO
                   </button>
                 ) : !isFree && locked > 0 ? (
                   <button
@@ -204,15 +204,15 @@ export default function ReposPage() {
                     className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/15 transition-colors disabled:opacity-50"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    {unlocking ? 'Desbloqueando…' : `Desbloquear ${locked} repos`}
+                    {unlocking ? 'Unlocking…' : `Unlock ${locked} repos`}
                   </button>
                 ) : isFree ? (
                   <button
-                    onClick={() => openUpgradeModal('Ver histórico completo')}
+                    onClick={() => openUpgradeModal('Full commit history')}
                     className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/15 transition-colors"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    Histórico completo → PRO
+                    Full history → PRO
                   </button>
                 ) : null}
               </div>
@@ -313,7 +313,7 @@ export default function ReposPage() {
                         onSync={handleSync}
                         syncing={syncing && currentSyncId === repo.id}
                         isLocked={!repo.isTracked && isFree}
-                        onUpgrade={() => openUpgradeModal('Desbloquear todos os repositórios')}
+                        onUpgrade={() => openUpgradeModal('Unlock all repositories')}
                       />
                     ))}
               </div>
@@ -325,13 +325,13 @@ export default function ReposPage() {
       {activeTab === 'stack' && (
         <TechStackView
           isFree={isFree}
-          onUpgrade={() => openUpgradeModal('Ver toda sua stack de tecnologia')}
+          onUpgrade={() => openUpgradeModal('See your full tech stack')}
         />
       )}
       {activeTab === 'evolution' && (
         <LangEvolutionView
           isFree={isFree}
-          onUpgrade={() => openUpgradeModal('Ver a evolução completa da sua stack')}
+          onUpgrade={() => openUpgradeModal('See your full stack evolution')}
         />
       )}
     </div>
@@ -480,17 +480,17 @@ function TechStackView({ isFree, onUpgrade }: {
             </div>
             <div className="flex-1 text-center sm:text-left">
               <p className="text-sm font-semibold text-slate-100">
-                Constellation baseada nos últimos 90 dias
+                Constellation based on the last 90 days
               </p>
               <p className="mt-0.5 text-xs text-slate-400">
-                Faça upgrade para PRO e veja sua stack completa com todo o histórico de commits.
+                Upgrade to PRO to see your full stack with your entire commit history.
               </p>
             </div>
             <button
               onClick={onUpgrade}
               className="shrink-0 cursor-pointer rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors whitespace-nowrap"
             >
-              Ver stack completa →
+              See full stack →
             </button>
           </div>
         </div>
@@ -808,7 +808,7 @@ function LangEvolutionView({ isFree, onUpgrade }: {
           <p className="mt-0.5 text-xs text-slate-500">How your tech stack has shifted year over year</p>
         </div>
         {isFree && (
-          <span className="text-[11px] text-amber-500/80 font-medium">Baseado nos últimos 90 dias</span>
+          <span className="text-[11px] text-amber-500/80 font-medium">Based on the last 90 days</span>
         )}
       </div>
 
@@ -825,17 +825,17 @@ function LangEvolutionView({ isFree, onUpgrade }: {
             </div>
             <div className="flex-1 text-center sm:text-left">
               <p className="text-sm font-semibold text-slate-100">
-                Evolução baseada nos últimos 90 dias
+                Evolution based on the last 90 days
               </p>
               <p className="mt-0.5 text-xs text-slate-400">
-                Faça upgrade para PRO e veja como sua stack evoluiu desde o primeiro commit — todos os anos.
+                Upgrade to PRO to see how your stack has evolved since your first commit — all years.
               </p>
             </div>
             <button
               onClick={onUpgrade}
               className="shrink-0 cursor-pointer rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors whitespace-nowrap"
             >
-              Ver evolução completa →
+              See full evolution →
             </button>
           </div>
         </div>

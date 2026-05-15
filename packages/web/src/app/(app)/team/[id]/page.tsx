@@ -78,7 +78,7 @@ export default function TeamDetailPage({ params }: PageProps) {
         </div>
         {isAdminOrManager && (
           <Button size="sm" onClick={() => setShowInvite(!showInvite)} className="cursor-pointer">
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> Convidar
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> Invite
           </Button>
         )}
       </div>
@@ -87,14 +87,14 @@ export default function TeamDetailPage({ params }: PageProps) {
       {showInvite && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Convidar membro</CardTitle>
+            <CardTitle className="text-sm">Invite member</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex gap-2">
               <input
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="email@empresa.com"
+                placeholder="email@company.com"
                 type="email"
                 className="flex-1 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-accent/50 focus:outline-none"
               />
@@ -117,10 +117,10 @@ export default function TeamDetailPage({ params }: PageProps) {
                 className="cursor-pointer"
               >
                 <Mail className="mr-1.5 h-3.5 w-3.5" />
-                {inviting ? 'Enviando…' : 'Enviar convite'}
+                {inviting ? 'Sending…' : 'Send invite'}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setShowInvite(false)} className="cursor-pointer">
-                Cancelar
+                Cancel
               </Button>
             </div>
           </CardContent>
@@ -130,7 +130,7 @@ export default function TeamDetailPage({ params }: PageProps) {
       {/* Members list */}
       <Card>
         <CardHeader>
-          <CardTitle>Membros ({members.length})</CardTitle>
+          <CardTitle>Members ({members.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -138,7 +138,7 @@ export default function TeamDetailPage({ params }: PageProps) {
               {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}
             </div>
           ) : members.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-6">Nenhum membro ainda.</p>
+            <p className="text-sm text-slate-500 text-center py-6">No members yet.</p>
           ) : (
             <div className="space-y-2">
               {members.map((member) => (
@@ -166,7 +166,7 @@ export default function TeamDetailPage({ params }: PageProps) {
                     <button
                       onClick={() => void removeMember({ variables: { teamId, userId: member.userId } })}
                       className="cursor-pointer rounded-md p-1 text-slate-600 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-                      title="Remover membro"
+                      title="Remove member"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -182,7 +182,7 @@ export default function TeamDetailPage({ params }: PageProps) {
       {isAdminOrManager && invites.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Convites pendentes ({invites.length})</CardTitle>
+            <CardTitle>Pending invites ({invites.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -192,7 +192,7 @@ export default function TeamDetailPage({ params }: PageProps) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-300 truncate">{invite.email}</p>
                     <p className="text-xs text-slate-600">
-                      {ROLE_LABELS[invite.role]} · Expira em {new Date(invite.expiresAt).toLocaleDateString('pt-BR')}
+                      {ROLE_LABELS[invite.role]} · Expires {new Date(invite.expiresAt).toLocaleDateString('en-US')}
                     </p>
                   </div>
                 </div>
@@ -204,9 +204,9 @@ export default function TeamDetailPage({ params }: PageProps) {
 
       {/* Coming Soon: Analytics */}
       <div className="rounded-xl border border-border bg-surface-2/50 p-6 text-center">
-        <p className="text-sm font-semibold text-slate-400">Analytics de time em breve</p>
+        <p className="text-sm font-semibold text-slate-400">Team analytics coming soon</p>
         <p className="mt-1 text-xs text-slate-600">
-          Velocity charts, leaderboard, burnout detector e relatórios — chegando no lançamento do Team Plan.
+          Velocity charts, leaderboard, burnout detector, and reports — arriving with the Team Plan launch.
         </p>
       </div>
     </div>

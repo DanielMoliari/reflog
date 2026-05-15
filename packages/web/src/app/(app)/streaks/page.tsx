@@ -200,17 +200,17 @@ export default function StreaksPage() {
             </div>
             <div className="flex-1 text-center sm:text-left">
               <p className="text-sm font-semibold text-slate-100">
-                Estatísticas baseadas nos últimos 90 dias
+                Stats based on the last 90 days
               </p>
               <p className="mt-0.5 text-xs text-slate-400">
-                PRO desbloqueia histórico completo — veja seus melhores streaks e evolução desde sempre.
+                PRO unlocks full history — see your best streaks and progress since day one.
               </p>
             </div>
             <button
-              onClick={() => openUpgradeModal('Histórico completo de streaks')}
+              onClick={() => openUpgradeModal('Full streak history')}
               className="shrink-0 cursor-pointer rounded-xl bg-accent px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent/90 transition-colors whitespace-nowrap"
             >
-              Upgrade para PRO →
+              Upgrade to PRO →
             </button>
           </div>
         </div>
